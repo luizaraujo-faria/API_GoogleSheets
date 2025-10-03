@@ -104,6 +104,9 @@ class GoogleSheetsService {
         });
 
         const nextRow = (readResponse.data.values?.length || 0) + 1;
+
+        console.log(`RANGE: ${readResponse.data.values}`)
+        console.log(`PROXIMA LINHA: ${nextRow}`)
         
         // Criar range específico para a próxima linha
         const sheetName = actualRange.split('!')[0];
@@ -126,8 +129,8 @@ class GoogleSheetsService {
         
         return {
             success: true,
-            data: response.data,
-            location: response.data.updatedRange
+            data: createResponse.data,
+            location: createResponse.data.updatedRange
         };
     } 
     catch(err){
