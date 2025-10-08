@@ -10,8 +10,20 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+interface GoogleSheetsResponse {
+  success: boolean;
+  data?: any;
+  error?: string;
+  range?: string;
+  message?: string;
+  location?: string;
+}
 
 class GoogleSheetsService {
+
+  private auth: any;
+  private sheets: any;
+  private SPREADSHEET_ID: any;
 
   constructor(){
     try {
@@ -31,13 +43,20 @@ class GoogleSheetsService {
       
       console.log('Google Sheets API configurada com sucesso!');
     } 
-    catch (err){
+    catch(err: any){
       console.error(`Erro na configuração do Google Sheets: ${err.message}`);
       throw err;
     }
   }
 
-  async testConnection(){
+  // Getters
+  get getSpreadsheetId(): string{ return this.SPREADSHEET_ID; }
+
+  get getSheetsApi(): any{ return this.sheets; }
+
+  get getAuthClient(): any{ return this.auth; }
+
+  async testConnection(): Promise<boolean> {
 
     try {
 
@@ -50,7 +69,7 @@ class GoogleSheetsService {
       return true;
 
     }
-    catch(err){
+    catch(err: any){
       console.error('Erro ao conectar com a planilha:', err.message);
       console.log('Verifique:');
       console.log(' 1. Se o SPREADSHEET_ID está correto no .env');
@@ -61,7 +80,7 @@ class GoogleSheetsService {
   }
 
   // BUSCAR DADOS
-  async readData(range = 'Página1!A:Z') {
+  async readData(range: string = 'Página1!A:Z'): Promise<GoogleSheetsResponse> {
 
     try{
 
@@ -76,7 +95,7 @@ class GoogleSheetsService {
         range: readResponse.data.range
       };
     } 
-    catch(err){
+    catch(err: any){
       console.error('Erro ao ler dados:', err.message);
       return {
         success: false,
@@ -86,7 +105,7 @@ class GoogleSheetsService {
   }
 
   // CRIAR DADOS
-  async writeData(range, values){
+  async writeData(range: string, values: any[]): Promise<GoogleSheetsResponse> {
 
     try {
         console.log(`Escrevendo dados no range: ${range}`, values);
@@ -103,16 +122,28 @@ class GoogleSheetsService {
             range: actualRange,
         });
 
-        const nextRow = (readResponse.data.values?.length || 0) + 1;
+        const existingData = readResponse.data.values || [];
 
-        console.log(`RANGE: ${readResponse.data.values}`)
-        console.log(`PROXIMA LINHA: ${nextRow}`)
+        let targetRow = 1;
+
+        for(let i = 0; i < existingData.length; i++){
+            if(!existingData[i] || !existingData[i][0] || existingData[i][0] === "" || existingData[i][0] === "Não informado"){
+                targetRow = i + 1;
+                break;
+            }
+        }
+
+        if(targetRow === 1 && existingData.length > 0){
+          targetRow = existingData.length + 1;
+        }
+
+        console.log(`LINHA ALVO: ${targetRow}`);
+        console.log(`Dados existentes:`, existingData);
         
-        // Criar range específico para a próxima linha
         const sheetName = actualRange.split('!')[0];
-        const specificRange = `${sheetName}!A${nextRow}`;
+        const specificRange = `${sheetName}!A${targetRow}`;
         
-        console.log(`Escrevendo na linha: ${nextRow}`);
+        console.log(`Escrevendo na linha: ${targetRow}`);
         console.log(`Range específico: ${specificRange}`);
 
         const createResponse = await this.sheets.spreadsheets.values.append({
@@ -133,7 +164,7 @@ class GoogleSheetsService {
             location: createResponse.data.updatedRange
         };
     } 
-    catch(err){
+    catch(err: any){
         console.error(`Erro ao escrever dados: ${err.message}`);
         return {
             success: false,
@@ -143,7 +174,7 @@ class GoogleSheetsService {
   }
 
   // ATUALIZAR DADOS
-  async updateData(range, values){
+  async updateData(range: string, values: any[]): Promise<GoogleSheetsResponse> {
 
     try{
       console.log(`Atualizando dados no range ${range}`, values);
@@ -167,7 +198,7 @@ class GoogleSheetsService {
         data: updateResponse.data
       }
     }
-    catch(err){
+    catch(err: any){
       console.error(`Erro ao atualizar dados: ${err.message}`);
       return {
         success: false,

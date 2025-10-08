@@ -1,9 +1,9 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import sheetsRouter from './routes/sheets.route.js';
+import sheetsRouter from './routes/sheets.route';
 
 dotenv.config();
 
@@ -22,13 +22,13 @@ app.use(express.json());
 app.use('/api', sheetsRouter);
 
 // Logging para desenvolvimento
-app.use((req, res, next) => {
+app.use((req: Request, res: Response, next: NextFunction) => {
     console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
     next();
 });
 
 // HEALTH CHECK - Adicione esta rota
-app.get('/health', (req, res) => {
+app.get('/health', (req: Request, res: Response) => {
     res.json({ 
         status: 'OK', 
         timestamp: new Date().toISOString(),
@@ -38,7 +38,7 @@ app.get('/health', (req, res) => {
 });
 
 // ROTA PRINCIPAL - Adicione esta também
-app.get('/', (req, res) => {
+app.get('/', (req: Request, res: Response) => {
     res.json({
         message: 'API Google Sheets funcionando!',
         endpoints: {
@@ -52,7 +52,7 @@ app.get('/', (req, res) => {
 });
 
 // Error handling
-app.use((err, req, res, next) => {
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     console.error('Erro:', err.stack);
     res.status(500).json({ 
         error: 'Algo deu errado!',
@@ -61,7 +61,7 @@ app.use((err, req, res, next) => {
 });
 
 // 404 handler
-app.use((req, res) => {
+app.use((req: Request, res: Response) => {
     res.status(404).json({ 
         error: 'Rota não encontrada',
         path: req.originalUrl,

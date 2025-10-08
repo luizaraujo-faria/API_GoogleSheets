@@ -1,28 +1,34 @@
+import { Request, Response } from 'express';
 import googleSheetsService from '../config/googleSheets.js';
 
 class SheetsController{
 
-    static async readData(req, res){
+    static async readData(req: Request, res: Response){
 
         try{
-            const { range, sheetName = 'Sheet1' } = req.query;
 
-            const requestedData = await googleSheetsService.sheets.spreadsheets.values.get({
-                spreadsheetId: googleSheetsService.SPREADSHEET_ID,
+            console.log(`SPREADSHEET_ID: ${googleSheetsService.getSpreadsheetId}`);
+            console.log(`SHEETSAPI: ${googleSheetsService.getSheetsApi}`);
+            console.log(`AUTHCLIENT: ${googleSheetsService.getAuthClient}`);
+
+            const { range, sheetName = 'EntradaSaida' } = req.query;
+
+            const requestedData = await googleSheetsService.getSheetsApi.spreadsheets.values.get({
+                spreadsheetId: googleSheetsService.getSpreadsheetId,
                 range: range || sheetName,
             });
 
             return res.status(200).json({ success: true, message: 'Dados buscados com sucesso!',data: requestedData.data.values || []});
         }
-        catch(err){
+        catch(err: any){
             res.status(500).json({ success: false, message: 'Falha ao buscar dados!',error: err.message });
         }
     }
 
-    static async writeData(req, res){
+    static async writeData(req: Request, res: Response){
 
         try{
-             const { range, values, sheetName = 'Sheet1' } = req.body; // ⚠️ Mude de req.query para req.body
+             const { range, values, sheetName = 'EntradaSaida' } = req.body;
 
             console.log('Dados recebidos:', { range, values, sheetName });
             
@@ -52,7 +58,7 @@ class SheetsController{
                 });
             }
         }
-        catch(err) {
+        catch(err: any) {
             console.error('Erro na controller:', err);
             res.status(500).json({ 
                 success: false, 
@@ -62,13 +68,13 @@ class SheetsController{
         }
     }
 
-    static async updateData(req, res){
+    static async updateData(req: Request, res: Response){
 
         try{
             const { range, values } = req.body;
 
-            const updatedData = await googleSheetsService.sheets.spreadsheets.values.append({
-                spreadsheetId: googleSheetsService.SPREADSHEET_ID,
+            const updatedData = await googleSheetsService.getSheetsApi.spreadsheets.values.append({
+                spreadsheetId: googleSheetsService.getSpreadsheetId,
                 range: range || 'Página1!A:Z',
                 options: 'RAW',
                 requestBody: {
@@ -78,7 +84,7 @@ class SheetsController{
 
             return res.status(200).json({ success: true, message: 'Dados atualizados com sucesso!', data: updatedData.data })
         }
-        catch(err){
+        catch(err: any){
             res.status(500).json({ success: false, message: 'Falha ao atualizar dados!', error: err.message });
         }
     }
