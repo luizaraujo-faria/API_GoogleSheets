@@ -3,7 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import sheetsRouter from './routes/sheets.route';
+import routes from './routes/index';
 
 dotenv.config();
 
@@ -19,7 +19,33 @@ app.use(cors());
 app.use(express.json());
 
 // Rotas
-app.use('/api', sheetsRouter);
+routes.forEach(({ prefix, router }) =>{
+    app.use(`/api${prefix}`, router);
+});
+
+// DEBUG PARA VER ROTAS DISPONIVEIS
+function printRoutes(stack: any[], prefix: string = '') {
+  stack.forEach((middleware) => {
+    if (middleware.route) {
+      // Rota direta
+      const methods = Object.keys(middleware.route.methods).join(', ').toUpperCase();
+      const path = prefix + middleware.route.path;
+      console.log(`📍 ${methods} ${path}`);
+    } else if (middleware.name === 'router' && middleware.handle.stack) {
+      // Router com prefixo
+      const newPrefix = prefix + (middleware.regexp.toString() !== '/^\\/?$/i' 
+        ? middleware.regexp.toString().replace(/^\/\^\\\//, '').replace(/\\\/\?\/i$/, '')
+        : '');
+      
+      console.log(`📁 Router: ${newPrefix || '/'}`);
+      printRoutes(middleware.handle.stack, newPrefix);
+    }
+  });
+}
+
+console.log('=== ROTAS COMPLETAS ===');
+printRoutes(app._router.stack);
+console.log('=== FIM DAS ROTAS ===');
 
 // Logging para desenvolvimento
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -27,7 +53,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     next();
 });
 
-// HEALTH CHECK - Adicione esta rota
+// HEALTH CHECK
 app.get('/health', (req: Request, res: Response) => {
     res.json({ 
         status: 'OK', 
@@ -37,7 +63,7 @@ app.get('/health', (req: Request, res: Response) => {
     });
 });
 
-// ROTA PRINCIPAL - Adicione esta também
+// ROTA PRINCIPAL
 app.get('/', (req: Request, res: Response) => {
     res.json({
         message: 'API Google Sheets funcionando!',
@@ -54,7 +80,7 @@ app.get('/', (req: Request, res: Response) => {
 // Error handling
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     console.error('Erro:', err.stack);
-    res.status(500).json({ 
+    res.status(err.httpStatus | 500).json({ 
         error: 'Algo deu errado!',
         message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
     });
