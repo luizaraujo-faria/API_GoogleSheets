@@ -1,4 +1,4 @@
-export interface Record {
+export interface TimeRecord {
     colaboratorId: number;
     name: string;
     sector: string;
@@ -19,5 +19,5 @@ export interface RecordsFilter {
     day?: Date;
     entry?: Date;
     exit?: Date;
-    scheduleId?: number;
+    id?: number;
 }

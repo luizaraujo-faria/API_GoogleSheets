@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import googleSheetsService from '../config/googleSheets';
 import GoogleSheetsResponse from '../responses/googleSheetsResponse';
 import RecordsService from '../services/recordsService';
-import { Record } from '../types/records/records';
+import { TimeRecord } from '../types/records/records';
 
 class RecordsController{
 
@@ -28,7 +28,7 @@ class RecordsController{
 
             // const { range = 'Página1!A:Z', sheetName = 'EntradaSaida' } = req.query;
             
-            const records: Record[] = await this.recordsService.getAll(
+            const records: TimeRecord[] = await this.recordsService.getAll(
                 this.range,
                 this.sheetName
             );
@@ -57,7 +57,7 @@ class RecordsController{
 
             console.log(`SETOR DO FILTRO: ${sector}`);
 
-            const records: Record[] = await this.recordsService.listBySector(
+            const records: TimeRecord[] = await this.recordsService.listBySector(
                 this.range,
                 this.sheetName,
                 sector as string
@@ -88,7 +88,6 @@ class RecordsController{
                 day as string
             );
 
-
             return res.status(200).json(GoogleSheetsResponse.successMessage(
                 'Dados listado por dia com sucesso!',
                 records
@@ -97,6 +96,31 @@ class RecordsController{
         catch(err: any){
             return res.status(err.httpStatus || 500).json(GoogleSheetsResponse.errorMessage(
                 'Falha ao listar dados por dia!',
+                err.message
+            ));
+        }
+    }
+
+    listEntryByTurn = async (req: Request, res: Response): Promise<Response> => {
+    
+        try{
+
+            const { turn } = req.params;
+
+            const records = await this.recordsService.listEntryByTurn(
+                this.range,
+                this.sheetName,
+                turn as string
+            );
+            
+            return res.status(200).json(GoogleSheetsResponse.successMessage(
+                'Registros carregados por entrada com sucesso!',
+                records
+            ));
+        }
+        catch(err: any){
+            return res.status(err.httpStatus || 500).json(GoogleSheetsResponse.errorMessage(
+                'Falha ao listar registros por entrada',
                 err.message
             ));
         }

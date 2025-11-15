@@ -1,3 +1,7 @@
+import { Turns } from "../constants/turns";
+import { isTimeInsideShift } from "./mappers";
+import { TimeRecord } from "../types/records/records";
+
 type Filters<T> = Partial<Record<keyof T, unknown>>;
 
 export function searchInSheet<T>(params: {
@@ -23,4 +27,19 @@ export function searchInSheet<T>(params: {
         return itemValue === value;
         })
     );
+}
+
+export function filterByTurn<T extends Record<string, any>>(
+    records: T[],
+    field: keyof T,
+    turn: Turns
+): T[] {
+
+    return records.filter(rec => {
+        const time = rec[field];
+
+        if (!time) return false;
+
+        return isTimeInsideShift(String(time), turn);
+    });
 }

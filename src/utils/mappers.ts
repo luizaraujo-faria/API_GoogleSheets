@@ -1,3 +1,7 @@
+import dayjs from "dayjs";
+import customParseFormat from "dayjs/plugin/customParseFormat";
+import { Turns, TurnsRange } from "../constants/turns";
+dayjs.extend(customParseFormat);
 
 export function mapSheetRowToRecord(row: Record<string, any>) {
 
@@ -8,7 +12,6 @@ export function mapSheetRowToRecord(row: Record<string, any>) {
         day: row["Dia"] ?? "",
         entry: row["Entrada"] ?? "",
         exit: row["Saida"] ?? "",
-        id: row["ID"] ?? "",
         recordId: row["ID"] ?? "" 
     };
 }
@@ -29,4 +32,17 @@ export function mapSheet<T>(values: any[][]): T[] {
         
         return obj as T;
     });
+}
+
+export function isTimeInsideShift(time: string, turn: Turns): boolean {
+    const range = TurnsRange[turn];
+
+    const t = dayjs(time, "HH:mm");
+    const start = dayjs(range.start, "HH:mm");
+    const end = dayjs(range.end, "HH:mm");
+
+    return (
+        (t.isAfter(start) || t.isSame(start)) &&
+        (t.isBefore(end) || t.isSame(end))
+    );
 }

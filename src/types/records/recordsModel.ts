@@ -1,8 +1,8 @@
-import { Record, CreateRecordDTO, RecordsFilter } from './records';
+import { TimeRecord, CreateRecordDTO, RecordsFilter } from './records';
 
 class RecordsModel {
 
-    static fromSheetData(row: any[]): Record{
+    static fromSheetData(row: any[]): TimeRecord{
 
         return {
             colaboratorId: Number(row[0]),
@@ -28,12 +28,12 @@ class RecordsModel {
         ];
     }
 
-    static calculatesTime(record: Record): number {
+    static calculatesTime(record: TimeRecord): number {
         const diffMs = record.exit.getTime() - record.entry.getTime();
         return diffMs / (1000 * 60 * 60); // Retorna horas
     }
 
-      static formatarHoras(record: Record): string {
+      static formatarHoras(record: TimeRecord): string {
         const hours = this.calculatesTime(record);
         const intHours = Math.floor(hours);
         const minutes = Math.round((hours - intHours) * 60);
@@ -41,9 +41,9 @@ class RecordsModel {
     }
 
     static filterRecords(
-        records: Record[], 
+        records: TimeRecord[], 
         filters: RecordsFilter
-    ): Record[] {
+    ): TimeRecord[] {
 
         return records.filter(record => {
         if (filters.colaboratorId && record.colaboratorId !== filters.colaboratorId) {
@@ -74,23 +74,23 @@ class RecordsModel {
         });
     }
 
-    static filterByDay(records: Record[], day: Date): Record[] {
+    static filterByDay(records: TimeRecord[], day: Date): TimeRecord[] {
         return this.filterRecords(records, { day });
     }
 
-    static filterBySector(records: Record[], sector: string): Record[] {
+    static filterBySector(records: TimeRecord[], sector: string): TimeRecord[] {
         return this.filterRecords(records, { sector });
     }
 
-    static filterByColaborator(records: Record[], colaboratorId: number): Record[] {
+    static filterByColaborator(records: TimeRecord[], colaboratorId: number): TimeRecord[] {
         return this.filterRecords(records, { colaboratorId });
     }
 
-    static filterByEntry(records: Record[], start: Date): Record[] {
+    static filterByEntry(records: TimeRecord[], start: Date): TimeRecord[] {
         return this.filterRecords(records, { entry: start });
     }
 
-    static filterByExit(records: Record[], start: Date): Record[] {
+    static filterByExit(records: TimeRecord[], start: Date): TimeRecord[] {
         return this.filterRecords(records, { exit: start});
     }
 

@@ -1,11 +1,12 @@
 import ApiException from "../errors/ApiException";
 import googleSheetsService from "../config/googleSheets";
 import { mapSheet, mapSheetRowToRecord } from "../utils/mappers";
-import { searchInSheet } from "../utils/filters";
+import { filterByTurn, searchInSheet } from "../utils/filters";
 import { validateParams, validateRangeAndSheetName, validateSheetData } from "../utils/validators";
-import { CreateRecordDTO, Record } from "../types/records/records";
+import { CreateRecordDTO, TimeRecord } from "../types/records/records";
 import dayjs, { Dayjs } from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
+import { Turns } from "../constants/turns";
 
 dayjs.extend(customParseFormat);
 
@@ -27,8 +28,8 @@ class RecordsService {
 
             const values = response.data.values;
 
-            const records = mapSheet<Record>(values);
-            const serializedRecords = validateSheetData<Record>(records);
+            const records = mapSheet<TimeRecord>(values);
+            const serializedRecords = validateSheetData<TimeRecord>(records);
 
             if(!serializedRecords.valid)
                 throw new ApiException('Nenhum registro de horário encontrado!', 404);
@@ -58,15 +59,15 @@ class RecordsService {
             });
 
             const values = response.data.values;
-            const records = mapSheet<Record>(values);
+            const records = mapSheet<TimeRecord>(values);
 
-            const serializedRecords = validateSheetData<Record>(records);
+            const serializedRecords = validateSheetData<TimeRecord>(records);
             if(!serializedRecords.valid)
                 throw new ApiException('Nenhum registro foi encontrado!', 404);
 
             const mappedRecords = serializedRecords.data!.map(mapSheetRowToRecord);
 
-            const filteredRecords = searchInSheet<Record>({
+            const filteredRecords = searchInSheet<TimeRecord>({
                 data: mappedRecords,
                 filters: { sector }
             });
@@ -93,23 +94,21 @@ class RecordsService {
             if(!formattedDay.isValid()) 
                 throw new ApiException('Data recebida é inválida!', 400);
 
-            console.log(`DIA FORMATADO: ${formattedDay}`);
-
             const response = await this.sheets.spreadsheets.values.get({
                 spreadsheetId: this.spreadSheetId,
                 range: sheetName
             });
 
             const values = response.data.values;
-            const records = mapSheet<Record>(values);
+            const records = mapSheet<TimeRecord>(values);
 
-            const serializedRecords = validateSheetData<Record>(records);
+            const serializedRecords = validateSheetData<TimeRecord>(records);
             if(!serializedRecords.valid)
                 throw new ApiException('Nenhum registro foi encontrado!', 404);
 
             const mappedRecords = serializedRecords.data!.map(mapSheetRowToRecord);
 
-            const filteredRecords = searchInSheet<Record>({
+            const filteredRecords = searchInSheet<TimeRecord>({
                 data: mappedRecords,
                 filters: { day: formattedDay.format('DD/MM/YY') }
             });
@@ -125,6 +124,45 @@ class RecordsService {
         }
     }
 
+    listEntryByTurn = async (range: string, sheetName: string, turn: string): Promise<any> => {
+
+        console.log(`TURNO RECEBIDO: ${turn}`)
+
+        try{
+
+            validateRangeAndSheetName(range, sheetName);
+            
+            const response = await this.sheets.spreadsheets.values.get({
+                spreadsheetId: this.spreadSheetId,
+                range: sheetName
+            });
+
+            const values = response.data.values;
+            const records = mapSheet<TimeRecord>(values);
+
+            const serializedRecords = validateSheetData<TimeRecord>(records);
+            if(!serializedRecords.valid)
+                throw new ApiException('Nenhum registro foi encontrado!', 404);
+
+            const mappedRecords = serializedRecords.data!.map(mapSheetRowToRecord);
+
+            const turnString = turn
+            const turnEnum = turnString as Turns;
+
+            console.log(`TURNO CORVERTIDO: ${turnEnum}`)
+
+            const filteredRecords = filterByTurn<TimeRecord>(mappedRecords, 'entry', turnEnum);
+            if(!filteredRecords || filteredRecords.length === 0)
+                throw new ApiException('Nenhum registro encontrado com entrada neste turno!', 404);
+
+            return filteredRecords;
+        }
+        catch(err: any){
+            console.error(`Erro no serviço "Listar entrada por turno": ${err.message}`);
+            throw err;
+        }
+    }
+
     async createRecord(range: string, values: CreateRecordDTO[]): Promise<any> {
 
         try {
@@ -133,7 +171,7 @@ class RecordsService {
                 throw new ApiException('O campo "values" é obrigatório e deve ser um array', 400);
             }
 
-            console.log(`Escrevendo dados no range: ${range}`, values);
+            // console.log(`Escrevendo dados no range: ${range}`, values);
             
             let actualRange = range;
             if(!range.includes('!')){
@@ -160,14 +198,14 @@ class RecordsService {
                 targetRow = existingData.length + 1;
             }
 
-            console.log(`LINHA ALVO: ${targetRow}`);
-            console.log(`Dados existentes:`, existingData);
+            // console.log(`LINHA ALVO: ${targetRow}`);
+            // console.log(`Dados existentes:`, existingData);
             
             const sheetName = actualRange.split('!')[0];
             const specificRange = `${sheetName}!A${targetRow}`;
             
-            console.log(`Escrevendo na linha: ${targetRow}`);
-            console.log(`Range específico: ${specificRange}`);
+            // console.log(`Escrevendo na linha: ${targetRow}`);
+            // console.log(`Range específico: ${specificRange}`);
 
             const createResponse = await this.sheets.spreadsheets.values.append({
                 spreadsheetId: this.spreadSheetId,
@@ -178,8 +216,8 @@ class RecordsService {
                 }
             });
 
-            console.log('Dados escritos com sucesso!');
-            console.log('Local:', createResponse.data.updatedRange);
+            // console.log('Dados escritos com sucesso!');
+            // console.log('Local:', createResponse.data.updatedRange);
             
             return createResponse;
         } 
