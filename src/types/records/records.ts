@@ -1,18 +1,18 @@
-export interface Schedule {
+export interface Record {
     colaboratorId: number;
     name: string;
     sector: string;
     day: Date;
     entry: Date;
     exit: Date;
-    scheduleId: number;
+    recordId: number;
 }
 
-export interface CreateScheduleDTO {
+export interface CreateRecordDTO {
     colaboratorId: number;
 }
 
-export interface SchedulesFilter {
+export interface RecordsFilter {
     colaboratorId?: number;
     name?: string;
     sector?: string;

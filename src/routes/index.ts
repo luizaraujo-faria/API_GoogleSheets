@@ -1,4 +1,4 @@
-import schedulesRouter from "./schedules.route";
+import recordsRouter from "./records.route";
 import colaboratorRouter from "./colaborator.route";
 import { Router } from 'express';
 
@@ -8,7 +8,7 @@ type RouteType = {
 }
 
 const routes: RouteType[] = [
-    schedulesRouter,
+    recordsRouter,
     colaboratorRouter,
 ]
 
