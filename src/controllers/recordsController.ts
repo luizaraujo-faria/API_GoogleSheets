@@ -126,22 +126,19 @@ class RecordsController{
         }
     }
 
-    createRecord = async (req: Request, res: Response): Promise<Response> => {
+    sendRecord = async (req: Request, res: Response): Promise<Response> => {
 
         try{
-            const { range, values, sheetName = 'EntradaSaida!A:Z' } = req.body;
+            const { range = '', values, sheetName = 'EntradaSaida!A:Z' } = req.body;
 
-            console.log('Dados recebidos:', { range, values, sheetName });
-
-            const createdData: any = await this.recordsService.createRecord(range || sheetName, values);
+            await this.recordsService.sendRecord(range || sheetName, values);
 
             return res.status(201).json(GoogleSheetsResponse.successMessage(
-                'Dados criados com sucesso!',
-                createdData.data
+                'Registro enviado com sucesso!',
+                null
             ));
         }
         catch(err: any) {
-            console.error('Erro na controller:', err);
             return res.status(err.httpStatus || 500).json(GoogleSheetsResponse.errorMessage(
                 'Falha ao enviar dados',
                 err.message

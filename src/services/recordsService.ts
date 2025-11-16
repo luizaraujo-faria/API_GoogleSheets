@@ -126,8 +126,6 @@ class RecordsService {
 
     listEntryByTurn = async (range: string, sheetName: string, turn: string): Promise<any> => {
 
-        console.log(`TURNO RECEBIDO: ${turn}`)
-
         try{
 
             validateRangeAndSheetName(range, sheetName);
@@ -149,8 +147,6 @@ class RecordsService {
             const turnString = turn
             const turnEnum = turnString as Turns;
 
-            console.log(`TURNO CORVERTIDO: ${turnEnum}`)
-
             const filteredRecords = filterByTurn<TimeRecord>(mappedRecords, 'entry', turnEnum);
             if(!filteredRecords || filteredRecords.length === 0)
                 throw new ApiException('Nenhum registro encontrado com entrada neste turno!', 404);
@@ -163,67 +159,120 @@ class RecordsService {
         }
     }
 
-    async createRecord(range: string, values: CreateRecordDTO[]): Promise<any> {
+    sendRecord = async(range: string, values: CreateRecordDTO[]): Promise<any> => {
 
-        try {
+        console.log(`ID RECEBIDO: ${values[0]}`);
 
-            if (!values || !Array.isArray(values)) {
-                throw new ApiException('O campo "values" é obrigatório e deve ser um array', 400);
+        try{
+
+            if(!values[0] || values.length < 0){
+                throw new ApiException('ID não fornecido!', 400);
             }
 
-            // console.log(`Escrevendo dados no range: ${range}`, values);
-            
-            let actualRange = range;
-            if(!range.includes('!')){
-                actualRange = `${range}!A:Z`;
-            }
-            
-            // Primeiro, ler para encontrar a próxima linha vazia
+            const colaboratorId: string = String(values[0]).trim();
+            const today = dayjs().format("DD/MM/YY");
+
+            // if(!values || !Array.isArray(values)) {
+            //     throw new ApiException('O campo "values" é obrigatório e deve ser um array', 400);
+            // }
+
+            // Ajusta range e sheetName
+            let actualRange = range && range.includes("!") ? range : `${range || 'EntradaSaida'}!A:Z`;
+            const sheetName = actualRange.includes("!") ? actualRange.split("!")[0] : actualRange;
+
+            // Busca tudo
             const readResponse = await this.sheets.spreadsheets.values.get({
                 spreadsheetId: this.spreadSheetId,
-                range: actualRange,
+                range: `${sheetName}!A:Z`,
             });
 
-            const existingData = readResponse.data.values || [];
-            let targetRow = 1;
+            const rows = (readResponse.data && readResponse.data.values) || [];
 
-            for(let i = 0; i < existingData.length; i++){
-                if(!existingData[i] || !existingData[i][0] || existingData[i][0] === "" || existingData[i][0] === "Não informado"){
-                    targetRow = i + 1;
+            // Detectar se existe header
+            const hasHeader =
+            rows.length > 0 &&
+            rows[0].some((cell: any) => typeof cell === "string" && /colaborador.*id/i.test(cell));
+
+            const dataStartIndex = hasHeader ? 1 : 0;
+
+            // Índices das colunas (tenta detectar pelo header, senão usa posições fixas)
+            let idxColab = 0, idxDay = 3, idxEntry = 4, idxExit = 5;
+
+            let foundRowIndex: number | null = null;
+            for (let i = rows.length - 1; i >= dataStartIndex; i--) {
+                const row = rows[i] || [];
+                const rowColab = row[idxColab] ? String(row[idxColab]).trim() : "";
+                if (rowColab !== colaboratorId) continue;
+
+                const rowDayRaw = row[idxDay] ? String(row[idxDay]).trim() : "";
+                const rowDayNormalized = rowDayRaw ? dayjs(rowDayRaw, ["DD/MM/YY", "DD/MM/YYYY", "YYYY-MM-DD"]).format("DD/MM/YY") : "";
+
+                if (rowDayNormalized !== today) continue;
+
+                const entryCell = row[idxEntry] ? String(row[idxEntry]).trim() : "";
+                const exitCell  = row[idxExit]  ? String(row[idxExit]).trim()  : "";
+
+                const exitIsEmpty = !exitCell || exitCell === "xx:xx" || exitCell === "XX:XX" || exitCell === "N/A";
+
+                if (entryCell && exitIsEmpty) {
+                    foundRowIndex = i;
                     break;
                 }
             }
 
-            if(targetRow === 1 && existingData.length > 0){
-                targetRow = existingData.length + 1;
+            // Atualiza registro e preenche saída
+            if (foundRowIndex !== null) {
+                // spreadsheet row number = array index + 1 (porque rows[0] -> linha 1)
+                const spreadsheetRow = foundRowIndex + 1;
+                const exitColumnLetter = (() => {
+                    // traduz idxExit (0-based) para letra (A,B,C...)
+                    const colIndex = idxExit; // 0-based
+                    let n = colIndex;
+                    let s = "";
+                    while (n >= 0){
+                        s = String.fromCharCode((n % 26) + 65) + s;
+                        n = Math.floor(n / 26) - 1;
+                    }
+                    return s;
+                })();
+
+                const updateRange = `${sheetName}!${exitColumnLetter}${spreadsheetRow}`;
+                const nowTime = dayjs().format("HH:mm");
+
+                console.log(`Atualizando registro: ${updateRange}`)
+
+                await this.sheets.spreadsheets.values.update({
+                    spreadsheetId: this.spreadSheetId,
+                    range: updateRange,
+                    valueInputOption: "USER_ENTERED",
+                    requestBody: {
+                    values: [[nowTime]]
+                    }
+                });
+
+                return;
             }
 
-            // console.log(`LINHA ALVO: ${targetRow}`);
-            // console.log(`Dados existentes:`, existingData);
-            
-            const sheetName = actualRange.split('!')[0];
-            const specificRange = `${sheetName}!A${targetRow}`;
-            
-            // console.log(`Escrevendo na linha: ${targetRow}`);
-            // console.log(`Range específico: ${specificRange}`);
+            // Cria nova linha na tabela
+            const newRow: (string | number)[] = [];
+            newRow[idxColab] = colaboratorId;
 
-            const createResponse = await this.sheets.spreadsheets.values.append({
+            console.log(`Criando novo registro: ${newRow}`);
+
+            await this.sheets.spreadsheets.values.append({
                 spreadsheetId: this.spreadSheetId,
-                range: specificRange,
-                valueInputOption: 'USER_ENTERED',
+                range: `${sheetName}!A:Z`,
+                valueInputOption: "USER_ENTERED",
                 requestBody: {
-                    values: [values]
+                    values: [newRow]
                 }
             });
 
-            // console.log('Dados escritos com sucesso!');
-            // console.log('Local:', createResponse.data.updatedRange);
-            
-            return createResponse;
-        } 
+            return;
+        }
         catch(err: any){
             console.error(`Erro no serviço "Criar Registro": ${err.message}`);
-            return err.message;
+            throw err;
         }
     }
 
