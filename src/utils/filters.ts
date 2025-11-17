@@ -1,8 +1,7 @@
 import { Turns } from "../constants/turns";
 import { isTimeInsideShift } from "./mappers";
-import { TimeRecord } from "../types/records/records";
 
-type Filters<T> = Partial<Record<keyof T, unknown>>;
+type Filters<T> = Partial<T>;
 
 export function searchInSheet<T>(params: {
     data: T[];

@@ -1,10 +1,11 @@
 export interface Colaborator {
-    colaboratorId: number;
+    colaboratorId: number | string;
     name: string;
     sector: string;
 }
 
 export interface CreateColaboratorDTO {
+    colaboratorId: number;
     name: string;
     sector: string;
 }

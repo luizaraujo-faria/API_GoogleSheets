@@ -15,21 +15,18 @@ class RecordsService {
     private readonly sheets: any = googleSheetsService.getSheetsApi;
     private readonly spreadSheetId: string | undefined = googleSheetsService.getSpreadsheetId;
 
-    async getAll(range: string, sheetName: string): Promise<any> {
+    async getAll(range: string): Promise<any> {
 
         try{
 
-            validateRangeAndSheetName(range, sheetName);
-
             const response = await this.sheets.spreadsheets.values.get({
                 spreadsheetId: this.spreadSheetId,
-                range: sheetName
+                range
             });
 
-            const values = response.data.values;
-
-            const records = mapSheet<TimeRecord>(values);
-            const serializedRecords = validateSheetData<TimeRecord>(records);
+            const serializedRecords = validateSheetData<TimeRecord>(
+                mapSheet<TimeRecord>(response.data.values)
+            );
 
             if(!serializedRecords.valid)
                 throw new ApiException('Nenhum registro de horário encontrado!', 404);
@@ -44,31 +41,26 @@ class RecordsService {
         }
     }
 
-    async listBySector(range: string, sheetName: string, sector: string): Promise<any> {
+    async listBySector(range: string, sector: string): Promise<any> {
 
         try{
-
-            validateRangeAndSheetName(range, sheetName);
 
             if(!sector || sector === undefined)
                 throw new ApiException('Setor para filtro não fornecido!', 400);
 
             const response = await this.sheets.spreadsheets.values.get({
                 spreadsheetId: this.spreadSheetId,
-                range: sheetName
+                range
             });
 
-            const values = response.data.values;
-            const records = mapSheet<TimeRecord>(values);
-
-            const serializedRecords = validateSheetData<TimeRecord>(records);
+            const serializedRecords = validateSheetData<TimeRecord>(
+                mapSheet<TimeRecord>(response.data.values)
+            );
             if(!serializedRecords.valid)
                 throw new ApiException('Nenhum registro foi encontrado!', 404);
 
-            const mappedRecords = serializedRecords.data!.map(mapSheetRowToRecord);
-
             const filteredRecords = searchInSheet<TimeRecord>({
-                data: mappedRecords,
+                data: serializedRecords.data!.map(mapSheetRowToRecord),
                 filters: { sector }
             });
 
@@ -83,11 +75,9 @@ class RecordsService {
         }
     }
 
-    listByDay = async (range: string, sheetName: string, day: string): Promise<any> => {
+    listByDay = async (range: string, day: string): Promise<any> => {
 
         try{
-
-            validateRangeAndSheetName(range, sheetName);
             validateParams(day, 'Dia');
 
             const formattedDay = dayjs(day, 'DD/MM/YYYY');
@@ -96,21 +86,18 @@ class RecordsService {
 
             const response = await this.sheets.spreadsheets.values.get({
                 spreadsheetId: this.spreadSheetId,
-                range: sheetName
+                range
             });
 
-            const values = response.data.values;
-            const records = mapSheet<TimeRecord>(values);
-
-            const serializedRecords = validateSheetData<TimeRecord>(records);
+            const serializedRecords = validateSheetData<TimeRecord>(
+                mapSheet<TimeRecord>(response.data.values)
+            );
             if(!serializedRecords.valid)
                 throw new ApiException('Nenhum registro foi encontrado!', 404);
 
-            const mappedRecords = serializedRecords.data!.map(mapSheetRowToRecord);
-
             const filteredRecords = searchInSheet<TimeRecord>({
-                data: mappedRecords,
-                filters: { day: formattedDay.format('DD/MM/YY') }
+                data: serializedRecords.data!.map(mapSheetRowToRecord),
+                filters: { day: formattedDay.format('DD/MM/YYYY') }
             });
 
             if(!filteredRecords || filteredRecords.length === 0)
@@ -124,21 +111,18 @@ class RecordsService {
         }
     }
 
-    listEntryByTurn = async (range: string, sheetName: string, turn: string): Promise<any> => {
+    listEntryByTurn = async (range: string, turn: string): Promise<any> => {
 
         try{
-
-            validateRangeAndSheetName(range, sheetName);
             
             const response = await this.sheets.spreadsheets.values.get({
                 spreadsheetId: this.spreadSheetId,
-                range: sheetName
+                range
             });
 
-            const values = response.data.values;
-            const records = mapSheet<TimeRecord>(values);
-
-            const serializedRecords = validateSheetData<TimeRecord>(records);
+            const serializedRecords = validateSheetData<TimeRecord>(
+                mapSheet<TimeRecord>(response.data.values)
+            );
             if(!serializedRecords.valid)
                 throw new ApiException('Nenhum registro foi encontrado!', 404);
 
@@ -160,8 +144,6 @@ class RecordsService {
     }
 
     sendRecord = async(range: string, values: CreateRecordDTO[]): Promise<any> => {
-
-        console.log(`ID RECEBIDO: ${values[0]}`);
 
         try{
 

@@ -6,7 +6,7 @@ import { TimeRecord } from '../types/records/records';
 
 class RecordsController{
 
-    public recordsService: RecordsService;
+    private readonly recordsService: RecordsService;
     public readonly range: string = 'Página1!A:Z';
     public readonly sheetName: string = 'EntradaSaida';
 
@@ -21,15 +21,8 @@ class RecordsController{
     getAll = async (req: Request, res: Response): Promise<Response> => {
         
         try{
-
-            // console.log(`SPREADSHEET_ID: ${googleSheetsService.getSpreadsheetId}`);
-            // console.log(`SHEETSAPI: ${googleSheetsService.getSheetsApi}`);
-            // console.log(`AUTHCLIENT: ${googleSheetsService.getAuthClient}`);
-
-            // const { range = 'Página1!A:Z', sheetName = 'EntradaSaida' } = req.query;
             
             const records: TimeRecord[] = await this.recordsService.getAll(
-                this.range,
                 this.sheetName
             );
 
@@ -58,7 +51,6 @@ class RecordsController{
             console.log(`SETOR DO FILTRO: ${sector}`);
 
             const records: TimeRecord[] = await this.recordsService.listBySector(
-                this.range,
                 this.sheetName,
                 sector as string
             );
@@ -83,7 +75,6 @@ class RecordsController{
             const { day } = req.params;
 
             const records = await this.recordsService.listByDay(
-                this.range,
                 this.sheetName,
                 day as string
             );
@@ -108,7 +99,6 @@ class RecordsController{
             const { turn } = req.params;
 
             const records = await this.recordsService.listEntryByTurn(
-                this.range,
                 this.sheetName,
                 turn as string
             );
@@ -129,9 +119,9 @@ class RecordsController{
     sendRecord = async (req: Request, res: Response): Promise<Response> => {
 
         try{
-            const { range = '', values, sheetName = 'EntradaSaida!A:Z' } = req.body;
+            const { values } = req.body;
 
-            await this.recordsService.sendRecord(range || sheetName, values);
+            await this.recordsService.sendRecord(this.sheetName, values);
 
             return res.status(201).json(GoogleSheetsResponse.successMessage(
                 'Registro enviado com sucesso!',

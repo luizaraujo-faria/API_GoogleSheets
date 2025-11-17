@@ -6,6 +6,8 @@ const colaboratorController = new ColaboratorController(new ColaboratorService);
 const router = Router();
 
 router.get('/', colaboratorController.getAll);
+router.get('/id/:colaboratorId', colaboratorController.getById);
+router.get('/sector/:sector', colaboratorController.listBySector);
 
 const colaboratorRouter = {
     prefix: '/colaborators',
