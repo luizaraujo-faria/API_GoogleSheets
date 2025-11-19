@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import googleSheetsService from '../config/googleSheets';
 import GoogleSheetsResponse from '../responses/googleSheetsResponse';
 import RecordsService from '../services/recordsService';
-import { TimeRecord } from '../types/records/records';
+import { TimeRecord } from '../types/records';
 
 class RecordsController{
 

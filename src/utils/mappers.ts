@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { Turns, TurnsRange } from "../constants/turns";
-import { Colaborator } from "../types/colaborator/colaborator";
+import { Colaborator } from "../types/colaborator";
 dayjs.extend(customParseFormat);
 
 export function mapSheetRowToRecord(row: Record<string, any>) {

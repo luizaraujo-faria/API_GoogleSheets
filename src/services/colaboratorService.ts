@@ -1,9 +1,9 @@
 import googleSheetsService from "../config/googleSheets";
 import ApiException from "../errors/ApiException";
-import { Colaborator } from "../types/colaborator/colaborator";
+import { Colaborator, colaboratorType, colaboratorTypeSchema, CreateColaboratorDTO } from "../types/colaborator";
 import { searchInSheet } from "../utils/filters";
 import { mapSheet, mapSheetRowToColaborator } from "../utils/mappers";
-import { validateSheetData } from "../utils/validators";
+import { validateParams, validateSheetData } from "../utils/validators";
 
 class ColaboratorService {
 
@@ -12,103 +12,109 @@ class ColaboratorService {
 
     getAll = async (range: string): Promise<Colaborator[]> => {
 
-        try{
+        if(!range || range === undefined)
+            throw new ApiException('Nome da folha não informado!', 400);
 
-            if(!range || range === undefined)
-                throw new ApiException('Nome da folha não informado!', 400);
+        const response = await this.sheets.spreadsheets.values.get({
+            spreadsheetId: this.spreadSheetId,
+            range
+        });
 
-            const response = await this.sheets.spreadsheets.values.get({
-                spreadsheetId: this.spreadSheetId,
-                range
-            });
+        const serializedColaborators = validateSheetData<Colaborator>(
+            mapSheet<Colaborator>(response.data.values)
+        );
+        if(!serializedColaborators.valid)
+            throw new ApiException('Nenhum colaborador encontrado na planilha!', 404);
 
-            const serializedColaborators = validateSheetData<Colaborator>(
-                mapSheet<Colaborator>(response.data.values)
-            );
-            if(!serializedColaborators.valid)
-                throw new ApiException('Nenhum colaborador encontrado na planilha!', 404);
+        const mappedColaborators = serializedColaborators.data!.map(mapSheetRowToColaborator);
 
-            const mappedColaborators = serializedColaborators.data!.map(mapSheetRowToColaborator);
-
-            return mappedColaborators;
-        }
-        catch(err: any){
-            console.error(`Erro no serviço "Buscar colaboradores": ${err.message}`);
-            throw err;
-        }
+        return mappedColaborators;
     }
 
-    getById = async (range: string, colaboratorId: string): Promise<Colaborator[]> => {
+    getById = async (range: string, colaboratorId: string | number): Promise<Colaborator> => {
 
-        try{
-            
-            if(!colaboratorId)
-                throw new ApiException('ID do colaborador não fornecido!', 400);
+        const serializedId: number | string = colaboratorTypeSchema.colaboratorId.parse(colaboratorId);
 
-            const response = await this.sheets.spreadsheets.values.get({
-                spreadsheetId: this.spreadSheetId,
-                range
-            });
+        const response = await this.sheets.spreadsheets.values.get({
+            spreadsheetId: this.spreadSheetId,
+            range
+        });
 
-            const serializedColaborators = validateSheetData<Colaborator>(
-                mapSheet<Colaborator>(response.data.values)
-            );
-            if(!serializedColaborators.valid)
-                throw new ApiException('Nenhum colaborador encontrado na planilha!', 404);
+        const serializedColaborators = validateSheetData<Colaborator>(
+            mapSheet<Colaborator>(response.data.values)
+        );
+        if(!serializedColaborators.valid)
+            throw new ApiException('Nenhum colaborador encontrado na planilha!', 404);
 
-            const mappedColaborators = serializedColaborators.data!.map(mapSheetRowToColaborator);
-            const filteredById = searchInSheet<Colaborator>({
-                data: mappedColaborators,
-                filters: { colaboratorId }
-            });
+        const mappedColaborators = serializedColaborators.data!.map(mapSheetRowToColaborator);
+        const filteredById = searchInSheet<Colaborator>({
+            data: mappedColaborators,
+            filters: { colaboratorId: serializedId }
+        });
 
-            if(!filteredById || filteredById.length === 0)
-                throw new ApiException('Nenhum colaborador encontrado com este ID!', 404);
+        if(!filteredById || filteredById.length === 0)
+            throw new ApiException('Nenhum colaborador encontrado com este ID!', 404);
 
-            return filteredById;
-        }
-        catch(err: any){
-            console.log(`Erro no serviço "Buscar por ID": ${err.message}`);
-            throw err;
-        }
+        return filteredById[0];
     }
 
     listBySector = async (range: string, sector: string): Promise<Colaborator[]> => {
-    
-        try{
 
-            if(!sector)
-                throw new ApiException('Setor não informado para busca!', 400);
+        const serializedSector: string = colaboratorTypeSchema.sector.parse(sector);
 
-            const response = await this.sheets.spreadsheets.values.get({
-                spreadsheetId: this.spreadSheetId,
-                range
-            });
+        const response = await this.sheets.spreadsheets.values.get({
+            spreadsheetId: this.spreadSheetId,
+            range
+        });
 
-            const serializedColaborators = validateSheetData<Colaborator>(
-                mapSheet<Colaborator>(response.data.values)
-            );
-            if(!serializedColaborators.valid)
-                throw new ApiException('Nenhum colaborador encontrado na planilha!', 404);
+        const serializedColaborators = validateSheetData<Colaborator>(
+            mapSheet<Colaborator>(response.data.values)
+        );
+        if(!serializedColaborators.valid)
+            throw new ApiException('Nenhum colaborador encontrado na planilha!', 404);
 
-            const mappedColaborators = serializedColaborators.data!.map(mapSheetRowToColaborator);
-            const filteredColaborators = searchInSheet<Colaborator>({
-                data: mappedColaborators,
-                filters: { sector }
-            });
+        const mappedColaborators = serializedColaborators.data!.map(mapSheetRowToColaborator);
+        const filteredColaborators = searchInSheet<Colaborator>({
+            data: mappedColaborators,
+            filters: { sector: serializedSector }
+        });
 
-            if(!filteredColaborators || filteredColaborators.length === 0)
-                throw new ApiException('Nenhum colaborador encontrado com este setor!', 404);
+        if(!filteredColaborators || filteredColaborators.length === 0)
+            throw new ApiException('Nenhum colaborador encontrado com este setor!', 404);
 
-            return filteredColaborators;
-        }
-        catch(err: any){
-            console.error(`Erro no serviço "Listar por setor": ${err.message}`);
-            throw err;
-        }
+        return filteredColaborators;
     }
 
-    
+    createColaborator = async (range: string, values: unknown[][]): Promise<void> => {
+
+        validateParams(values, 'Dados do colaborador');
+
+        const dataRow = values[0];
+        if(!dataRow)
+            throw new ApiException('Nenhum dados foi enviado!', 400);
+
+        const data = {
+            colaboratorId: dataRow[0],
+            name: dataRow[1],
+            sector: dataRow[2]
+        }
+
+        const serializedData: CreateColaboratorDTO = colaboratorType.parse(data);
+        const dataToMatrix = [[
+            serializedData.colaboratorId,
+            serializedData.name,
+            serializedData.sector
+        ]];
+
+        await this.sheets.spreadsheets.values.append({
+            spreadsheetId: this.spreadSheetId,
+            range,
+            valueInputOption: 'USER_ENTERED',
+            requestBody: {
+                values: dataToMatrix
+            }
+        });
+    }
 }
 
 export default ColaboratorService;

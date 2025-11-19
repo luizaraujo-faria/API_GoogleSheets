@@ -8,6 +8,7 @@ const router = Router();
 router.get('/', colaboratorController.getAll);
 router.get('/id/:colaboratorId', colaboratorController.getById);
 router.get('/sector/:sector', colaboratorController.listBySector);
+router.post('/', colaboratorController.createColaborator);
 
 const colaboratorRouter = {
     prefix: '/colaborators',

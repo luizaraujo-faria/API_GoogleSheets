@@ -3,7 +3,7 @@ import googleSheetsService from "../config/googleSheets";
 import { mapSheet, mapSheetRowToRecord } from "../utils/mappers";
 import { filterByTurn, searchInSheet } from "../utils/filters";
 import { validateParams, validateRangeAndSheetName, validateSheetData } from "../utils/validators";
-import { CreateRecordDTO, TimeRecord } from "../types/records/records";
+import { CreateRecordDTO, TimeRecord } from "../types/records";
 import dayjs, { Dayjs } from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { Turns } from "../constants/turns";

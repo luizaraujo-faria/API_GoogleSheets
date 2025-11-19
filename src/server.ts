@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import routes from './routes/index';
+import { ZodError } from 'zod';
 
 dotenv.config();
 
@@ -79,11 +80,32 @@ app.get('/', (req: Request, res: Response) => {
 
 // Error handling
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-    console.error('Erro:', err.stack);
-    res.status(err.httpStatus | 500).json({ 
+    
+    // Erros do Zod
+    if (err instanceof ZodError) {
+        const formatted = err.issues.map(issue => ({
+            field: issue.path.join('.'),
+            error: issue.message
+        }));
+
+        return res.status(400).json({
+            sucess: false,
+            message: "Dados inválidos",
+            fields: formatted
+        });
+    }
+
+    console.error('Erro:', err.stack || err);
+
+    return res.status(err.httpStatus || 500).json({
+        sucess: false,
         error: 'Algo deu errado!',
-        message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
+        message: err.message
     });
+
+    // process.env.NODE_ENV === 'development'
+    //         ? err.message
+    //         : 'Internal server error'
 });
 
 // 404 handler

@@ -1,7 +1,8 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import GoogleSheetsResponse from "../responses/googleSheetsResponse";
 import ColaboratorService from "../services/colaboratorService";
-import { Colaborator } from "../types/colaborator/colaborator";
+import { Colaborator } from "../types/colaborator";
+import { nextTick } from "process";
 
 class ColaboratorController {
 
@@ -38,13 +39,12 @@ class ColaboratorController {
         }
     }
 
-    getById = async (req: Request, res: Response): Promise<Response> => {
+    getById = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
 
         try{
-
             const { colaboratorId } = req.params;
 
-            const colaborator: Colaborator[] = await this.colaboratorService.getById(
+            const colaborator: Colaborator = await this.colaboratorService.getById(
                 this.sheetName as string,
                 colaboratorId
             );
@@ -55,17 +55,13 @@ class ColaboratorController {
             ));
         }
         catch(err: any){
-            return res.status(err.httpStatus || 500).json(GoogleSheetsResponse.errorMessage(
-                'Falha ao buscar colaborador pelo ID!',
-                err.message
-            ));
+            next(err);
         }
     }
 
-    listBySector = async (req: Request, res: Response): Promise<Response> => {
+    listBySector = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
 
         try{
-
             const { sector } = req.params;
 
             const colaborators: Colaborator[] = await this.colaboratorService.listBySector(
@@ -79,13 +75,30 @@ class ColaboratorController {
             ))
         }
         catch(err: any){
-            return res.status(err.httpStatus || 500).json(GoogleSheetsResponse.errorMessage(
-                'Falha ao listar colaboradores por setor!',
-                err.message
-            ));
+            next(err);
         }
     }
 
+    createColaborator = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
+
+        try{
+
+            const { values } = req.body;
+
+            await this.colaboratorService.createColaborator(
+                this.sheetName,
+                values
+            );
+
+            return res.status(201).json(GoogleSheetsResponse.successMessage(
+                'Colaborador registrado com sucesso!',
+                null
+            ));
+        }
+        catch(err: any){
+            next(err);
+        }
+    }
 }
 
 export default ColaboratorController;
