@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import googleSheetsService from '../config/googleSheets';
 import GoogleSheetsResponse from '../responses/googleSheetsResponse';
 import RecordsService from '../services/recordsService';
@@ -42,13 +42,10 @@ class RecordsController{
         }
     }
 
-    listBySector = async (req: Request, res: Response): Promise<Response> => {
+    listBySector = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
 
         try{
-
             const { sector } = req.params;
-
-            console.log(`SETOR DO FILTRO: ${sector}`);
 
             const records: TimeRecord[] = await this.recordsService.listBySector(
                 this.sheetName,
@@ -61,20 +58,16 @@ class RecordsController{
             ));
         }
         catch(err: any){
-            return res.status(err.httpStatus || 500).json(GoogleSheetsResponse.errorMessage(
-                'Falha ao listar por setor!',
-                err.message
-            ));
+            next(err);
         }
     }
 
-    listByDay = async (req: Request, res: Response): Promise<Response> => {
+    listByDay = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
 
         try{
-
             const { day } = req.params;
 
-            const records = await this.recordsService.listByDay(
+            const records: TimeRecord[] = await this.recordsService.listByDay(
                 this.sheetName,
                 day as string
             );
@@ -85,20 +78,16 @@ class RecordsController{
             ))
         }
         catch(err: any){
-            return res.status(err.httpStatus || 500).json(GoogleSheetsResponse.errorMessage(
-                'Falha ao listar dados por dia!',
-                err.message
-            ));
+            next(err);
         }
     }
 
-    listEntryByTurn = async (req: Request, res: Response): Promise<Response> => {
+    listEntryByTurn = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
     
         try{
-
             const { turn } = req.params;
 
-            const records = await this.recordsService.listEntryByTurn(
+            const records: TimeRecord[] = await this.recordsService.listEntryByTurn(
                 this.sheetName,
                 turn as string
             );
@@ -109,14 +98,11 @@ class RecordsController{
             ));
         }
         catch(err: any){
-            return res.status(err.httpStatus || 500).json(GoogleSheetsResponse.errorMessage(
-                'Falha ao listar registros por entrada',
-                err.message
-            ));
+            next(err);
         }
     }
 
-    sendRecord = async (req: Request, res: Response): Promise<Response> => {
+    sendRecord = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
 
         try{
             const { values } = req.body;
@@ -129,10 +115,7 @@ class RecordsController{
             ));
         }
         catch(err: any) {
-            return res.status(err.httpStatus || 500).json(GoogleSheetsResponse.errorMessage(
-                'Falha ao enviar dados',
-                err.message
-            ));
+            next(err);
         }
     }
 

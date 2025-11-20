@@ -1,3 +1,10 @@
+import z from 'zod';
+
+export const turnsTypeSchema = z.enum(['manha', 'tarde', 'noite'], {
+    required_error: 'Turno é obrigatório!',
+    invalid_type_error: 'Turno inválido!'
+})
+
 export enum Turns {
     MORNING = 'manha',
     AFTERNOON = 'tarde',

@@ -6,7 +6,8 @@ export const colaboratorTypeSchema = {
             required_error: 'ID do colaborador é obrigatório!',
             invalid_type_error: 'ID deve ser um texto ou número!'
         })
-        .int('ID de colaborador precisa ser inteiro!'),
+        .int('ID de colaborador precisa ser inteiro!')
+        .nonnegative(),
         z.string({
             required_error: 'ID do colaborador é obrigatório!'
         })
