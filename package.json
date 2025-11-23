@@ -5,9 +5,10 @@
   "description": "",
   "main": "src/server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "nodemon dist/server.js",
     "dev": "tsx watch src/server.ts",
-    "dev:debug": "nodemon --inspect server.js"
+    "dev:debug": "nodemon --inspect server.js",
+    "build": "tsc"
   },
   "keywords": [],
   "author": "",

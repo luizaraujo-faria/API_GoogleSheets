@@ -7,8 +7,8 @@ import { TimeRecord } from '../types/records';
 class RecordsController{
 
     private readonly recordsService: RecordsService;
-    public readonly range: string = 'Página1!A:Z';
-    public readonly sheetName: string = 'EntradaSaida';
+    public readonly range: string = 'Página1!A:G';
+    public readonly sheetName: string = 'EntradaSaida!A:G';
 
     constructor(recordsService: RecordsService){
         this.recordsService = recordsService;
@@ -105,7 +105,7 @@ class RecordsController{
     sendRecord = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
 
         try{
-            const { values } = req.body;
+            const values = req.body;
 
             await this.recordsService.sendRecord(this.sheetName, values);
 

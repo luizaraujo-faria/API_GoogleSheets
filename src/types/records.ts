@@ -70,6 +70,21 @@ export const recordTypeFields = {
     .nonnegative()
 }
 
+export const colaboratorIdSchema = z.union([
+    z.number({
+        required_error: 'ID do colaborador é obrigatório!',
+        invalid_type_error: 'ID deve ser um texto ou número!'
+    })
+    .int('ID de colaborador precisa ser inteiro!')
+    .nonnegative(),
+    
+    z.string({
+        required_error: 'ID do colaborador é obrigatório!'
+    })
+    .regex(/^\d+$/, 'ID deve ser numérico')
+    .nonempty()
+]);
+
 export const recordType = z.object(recordTypeFields);
 export const recordTypePartial = z.object(recordTypeFields).partial();
 
