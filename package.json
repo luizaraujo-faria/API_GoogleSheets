@@ -3,12 +3,12 @@
   "version": "1.0.0",
   "type": "module",
   "description": "",
-  "main": "src/server.js",
+  "main": "dist/server.js",
   "scripts": {
     "start": "nodemon dist/server.js",
     "dev": "tsx watch src/server.ts",
     "dev:debug": "nodemon --inspect server.js",
-    "build": "esbuild src/server.ts --bundle --outfile=dist/server.js --platform=node --target=node18"
+    "build": "tsc"
   },
   "keywords": [],
   "author": "",
