@@ -8,7 +8,7 @@
     "start": "nodemon dist/server.js",
     "dev": "tsx watch src/server.ts",
     "dev:debug": "nodemon --inspect server.js",
-    "build": "tsc"
+    "build": "esbuild src/server.ts --bundle --platform=node --outfile=dist/server.js --format=esm"
   },
   "keywords": [],
   "author": "",

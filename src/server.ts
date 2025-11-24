@@ -3,7 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import routes from './routes/index.js';
+import routes from './routes/index';
 import { ZodError } from 'zod';
 
 dotenv.config();
