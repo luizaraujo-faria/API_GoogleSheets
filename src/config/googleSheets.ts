@@ -10,6 +10,12 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+if(!process.env.GOOGLE_CREDENTIALS) {
+  throw new Error("A variável GOOGLE_CREDENTIALS não está definida!");
+}
+
+const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS);
+
 class GoogleSheetsService {
 
   private auth: any;
@@ -21,12 +27,12 @@ class GoogleSheetsService {
     try {
 
       // Caminho para o arquivo de credenciais
-      const keyFilePath = join(__dirname, '../../credentials/api-imrea.json');
-      console.log('Procurando credenciais em:', keyFilePath);
+      // const keyFilePath = join(__dirname, '../../credentials/api-imrea.json');
+      console.log('Procurando credenciais em:', credentials);
 
       
       this.auth = new google.auth.GoogleAuth({
-        keyFile: keyFilePath,
+        credentials,
         scopes: ['https://www.googleapis.com/auth/spreadsheets'],
       });
       

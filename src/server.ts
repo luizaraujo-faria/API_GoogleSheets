@@ -25,24 +25,27 @@ routes.forEach(({ prefix, router }) =>{
 });
 
 // DEBUG PARA VER ROTAS DISPONIVEIS
-function printRoutes(stack: any[], prefix: string = '') {
-  stack.forEach((middleware) => {
-    if (middleware.route) {
-      // Rota direta
-      const methods = Object.keys(middleware.route.methods).join(', ').toUpperCase();
-      const path = prefix + middleware.route.path;
-      console.log(`📍 ${methods} ${path}`);
-    } else if (middleware.name === 'router' && middleware.handle.stack) {
-      // Router com prefixo
-      const newPrefix = prefix + (middleware.regexp.toString() !== '/^\\/?$/i' 
-        ? middleware.regexp.toString().replace(/^\/\^\\\//, '').replace(/\\\/\?\/i$/, '')
-        : '');
-      
-      console.log(`📁 Router: ${newPrefix || '/'}`);
-      printRoutes(middleware.handle.stack, newPrefix);
-    }
-  });
-}
+function printRoutes(stack: any[], prefix: string = ''){
+
+    stack.forEach((middleware) => {
+    
+        if(middleware.route) {
+            // Rota direta
+            const methods = Object.keys(middleware.route.methods).join(', ').toUpperCase();
+            const path = prefix + middleware.route.path;
+            console.log(`📍 ${methods} ${path}`);
+        }
+        else if(middleware.name === 'router' && middleware.handle.stack){
+            // Router com prefixo
+            const newPrefix = prefix + (middleware.regexp.toString() !== '/^\\/?$/i' 
+                ? middleware.regexp.toString().replace(/^\/\^\\\//, '').replace(/\\\/\?\/i$/, '')
+                : '');
+        
+            console.log(`📁 Router: ${newPrefix || '/'}`);
+            printRoutes(middleware.handle.stack, newPrefix);
+        }
+    });
+};
 
 console.log('=== ROTAS COMPLETAS ===');
 printRoutes(app._router.stack);
@@ -82,7 +85,7 @@ app.get('/', (req: Request, res: Response) => {
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     
     // Erros do Zod
-    if (err instanceof ZodError) {
+    if(err instanceof ZodError){
         const formatted = err.issues.map(issue => ({
             field: issue.path.join('.'),
             error: issue.message
@@ -102,10 +105,6 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
         error: 'Algo deu errado!',
         message: err.message
     });
-
-    // process.env.NODE_ENV === 'development'
-    //         ? err.message
-    //         : 'Internal server error'
 });
 
 // 404 handler
