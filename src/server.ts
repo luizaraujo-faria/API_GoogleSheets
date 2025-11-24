@@ -1,12 +1,12 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
+import { config } from 'dotenv';
 import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { dirname, join, resolve } from 'path';
 import routes from './routes/index';
 import { ZodError } from 'zod';
 
-dotenv.config();
+config({ path: resolve(process.cwd(), '.env') });
 
 // Criar __dirname para ES Modules
 const __filename = fileURLToPath(import.meta.url);
