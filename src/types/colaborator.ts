@@ -30,6 +30,7 @@ export const colaboratorTypeSchema = {
         .regex(/^[A-Za-zÀ-ÖØ-öø-ÿ -]+$/, 'Setor deve conter apenas letras!')
         .min(2, 'Deve conter no mínimo duas letras!')
         .nonempty(),
+    
 };
 
 export const colaboratorType = z.object(colaboratorTypeSchema);

@@ -5,6 +5,8 @@ import { filterByTurn, searchInSheet } from "../utils/filters";
 import { validateParams, validateSheetData } from "../utils/validators";
 import { colaboratorIdSchema, CreateRecordDTO, recordTypeFields, TimeRecord } from "../types/records";
 import dayjs from "dayjs";
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { Turns, turnsTypeSchema } from "../constants/turns";
 
@@ -129,7 +131,7 @@ class RecordsService {
             ? actualRange.split("!")[0]
             : actualRange;
 
-        // 📌 Ler planilha APENAS 1 vez
+        // Ler planilha APENAS 1 vez
         const readResponse = await this.sheets.spreadsheets.values.get({
             spreadsheetId: this.spreadSheetId,
             range: `${sheetName}!A:F`,
@@ -202,7 +204,9 @@ class RecordsService {
             // Atualizar saída de um registro existente
             if (foundRowIndex !== null) {
                 const spreadsheetRow = foundRowIndex + 1;
-                const nowTime = dayjs().format("HH:mm");
+                const nowTime = dayjs().tz('America/Sao_Paulo').format("HH:mm");
+
+                console.log(`DATA DE SAIDA: ${nowTime}`)
 
                 // Converter idxExit → letra
                 const exitColumnLetter = (() => {
