@@ -93,6 +93,9 @@ class ColaboratorService {
         if(!dataRow)
             throw new ApiException('Nenhum dados foi enviado!', 400);
 
+        console.log(`Dados recebidos: ${values[0]} ${values[1]} ${values[2]}`)
+        console.log(range)
+
         const data = {
             colaboratorId: dataRow[0],
             name: dataRow[1],
