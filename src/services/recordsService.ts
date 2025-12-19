@@ -11,6 +11,8 @@ import customParseFormat from "dayjs/plugin/customParseFormat";
 import { Turns, turnsTypeSchema } from "../constants/turns";
 
 dayjs.extend(customParseFormat);
+dayjs.extend(utc)
+dayjs.extend(timezone)
 
 class RecordsService {
 
