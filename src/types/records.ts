@@ -89,7 +89,7 @@ export const recordType = z.object(recordTypeFields);
 export const recordTypePartial = z.object(recordTypeFields).partial();
 
 export interface TimeRecord {
-    colaboratorId: number;
+    colaboratorId: number | string;
     name: string;
     sector: string;
     day: Date | string;

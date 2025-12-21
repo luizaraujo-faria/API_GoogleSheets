@@ -1,7 +1,7 @@
 import ApiException from "../errors/ApiException";
 import googleSheetsService from "../config/googleSheets";
 import { mapSheet, mapSheetRowToRecord } from "../utils/mappers";
-import { filterByTurn, searchInSheet } from "../utils/filters";
+import { filterByMonthAndYear, filterByTurn, searchInSheet } from "../utils/filters";
 import { validateParams, validateSheetData } from "../utils/validators";
 import { colaboratorIdSchema, CreateRecordDTO, recordTypeFields, TimeRecord } from "../types/records";
 import dayjs from "dayjs";
@@ -9,6 +9,7 @@ import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { Turns, turnsTypeSchema } from "../constants/turns";
+import { verifyAndSerializeRecordsCache } from "../utils/validateRecordCache";
 
 dayjs.extend(customParseFormat);
 dayjs.extend(utc)
@@ -18,6 +19,8 @@ class RecordsService {
 
     private readonly sheets: any = googleSheetsService.getSheetsApi;
     private readonly spreadSheetId: string | undefined = googleSheetsService.getSpreadsheetId;
+
+    private recordsCache: TimeRecord[] | undefined;
 
     async getAll(range: string): Promise<TimeRecord[]> {
 
@@ -106,6 +109,7 @@ class RecordsService {
         const serializedRecords = validateSheetData<TimeRecord>(
             mapSheet<TimeRecord>(response.data.values)
         );
+
         if(!serializedRecords.valid)
             throw new ApiException('Nenhum registro foi encontrado!', 404);
 
@@ -113,10 +117,60 @@ class RecordsService {
             serializedRecords.data!.map(mapSheetRowToRecord),
             'entry', serializedTurn
         );
+
         if(!filteredRecords || filteredRecords.length === 0)
             throw new ApiException('Nenhum registro encontrado com entrada neste turno!', 404);
 
         return filteredRecords;
+    }
+
+    listMealCountByColaboratorId = async (
+        range: string, 
+        colaboratorId: string, 
+        month: string, 
+        turn: string | undefined
+    ): Promise<number> => {
+
+        let serializedTurn: Turns | undefined = undefined;
+        const currentYear = dayjs().year();
+        const targetMonth = Number(month);
+
+        if(isNaN(targetMonth) || targetMonth < 1 || targetMonth > 12)
+            throw new ApiException('Mês informado é inválido!', 400);
+
+        if(turn) serializedTurn = turnsTypeSchema.parse(turn?.toLowerCase()) as Turns;
+
+        this.recordsCache = await verifyAndSerializeRecordsCache(
+            this.recordsCache,
+            this.sheets,
+            this.spreadSheetId,
+            range
+        );
+
+        // console.log(`CACHE DOS DADOS APÓS FUNÇÃO: ${this.recordsCache?.length}`)
+
+        const filteredRecordsByColaboratorId: TimeRecord[] = searchInSheet<TimeRecord>({
+            data: this.recordsCache!,
+            filters: { colaboratorId }
+        });
+
+        console.log(`CACHE DA PLANILHA: ${this.recordsCache![this.recordsCache!.length - 1]}`)
+        const monthlyRecords: TimeRecord[] = filterByMonthAndYear<TimeRecord>(
+            filteredRecordsByColaboratorId,
+            targetMonth,
+            currentYear,
+        );
+
+        const finalFilteredRecords: TimeRecord[] = turn ? 
+            filterByTurn<TimeRecord>(monthlyRecords, 'entry', serializedTurn!) 
+            : monthlyRecords;
+    
+        if(!finalFilteredRecords || finalFilteredRecords.length === 0)
+            throw new ApiException('Nenhum registro encontrado!', 404);
+
+        const mealCount: number = finalFilteredRecords.length;
+
+        return mealCount;
     }
 
     sendRecord = async (range: string, values: CreateRecordDTO[]): Promise<void> => {

@@ -1,5 +1,7 @@
+import dayjs from "dayjs";
 import { Turns } from "../constants/turns";
 import { isTimeInsideShift } from "./mappers";
+import { TimeRecord } from "../types/records";
 
 type Filters<T> = Partial<T>;
 
@@ -28,6 +30,24 @@ export function searchInSheet<T>(params: {
     );
 }
 
+export function filterByMonthAndYear<T extends TimeRecord>(
+    records: T[],
+    month: number,
+    year: number
+): T[] {
+    
+    return records.filter(record => {
+
+        const date = dayjs(record.day, 'DD/MM/YY');
+        if(!date.isValid()) return false;
+
+        return (
+            date.month() + 1 === month &&
+            date.year() === year
+        );
+    });
+}
+
 export function filterByTurn<T extends Record<string, any>>(
     records: T[],
     field: keyof T,
@@ -35,7 +55,7 @@ export function filterByTurn<T extends Record<string, any>>(
 ): T[] {
 
     return records.filter(rec => {
-        const time = rec[field];
+        const time = rec[field!];
 
         if (!time) return false;
 

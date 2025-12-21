@@ -9,6 +9,7 @@ router.get('/', recordsController.getAll);
 router.get('/sector/:sector', recordsController.listBySector);
 router.get('/day/:day', recordsController.listByDay);
 router.get('/entry/:turn', recordsController.listEntryByTurn);
+router.get('/meal/:colaboratorId/:month', recordsController.listMealCountByColaboratorId);
 router.post('/', recordsController.sendRecord);
 // sheetsRouter.patch('/sheets', sheetsController.updateData);
 

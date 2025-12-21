@@ -1,27 +1,27 @@
 import z from 'zod';
 
-export const turnsTypeSchema = z.enum(['manha', 'tarde', 'noite'], {
+export const turnsTypeSchema = z.enum(['cafe_da_manha', 'almoco', 'cafe_da_tarde'], {
     required_error: 'Turno é obrigatório!',
     invalid_type_error: 'Turno inválido!'
 })
 
 export enum Turns {
-    MORNING = 'manha',
-    AFTERNOON = 'tarde',
-    NIGHT = 'noite'
+    BREAKFAST = 'cafe_da_manha',
+    LUNCH = 'almoco',
+    AFTERNOON_COFFEE = 'cafe_da_tarde'
 }
 
 export const TurnsRange = {
-    [Turns.MORNING]: {
-        start: '06:00',
-        end: '11:59'
+    [Turns.BREAKFAST]: {
+        start: '06:30',
+        end: '11:00'
     },
-    [Turns.AFTERNOON]: {
-        start: '12:00',
-        end: '17:59'
+    [Turns.LUNCH]: {
+        start: '11:30',
+        end: '14:45'
     },
-    [Turns.NIGHT]: {
-        start: '18:00',
+    [Turns.AFTERNOON_COFFEE]: {
+        start: '15:00',
         end: '23:59'
     }
 } as const;
