@@ -102,13 +102,13 @@ class RecordsController{
         }
     }
 
-    listMealCountByColaboratorId = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
+    listMealCountByColaboratorIdByMonth = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
 
         try{
             const { colaboratorId, month } = req.params;
             const { turn } = req.query;
 
-            const mealCountByColaborator: number = await this.recordsService.listMealCountByColaboratorId(
+            const mealCountByColaborator: number = await this.recordsService.listMealCountByColaboratorIdByMonth(
                 this.sheetName,
                 colaboratorId as string,
                 month as string,
@@ -118,11 +118,39 @@ class RecordsController{
             const responseMessage = 
                 turn ?
                 `Total de vezes que o colaborador (${colaboratorId}) comeu durante o mês (${month}) no turno (${turn}) carregados!`
-                : `Total de vezes que o colaborador (${colaboratorId}) comeu durante mês (${month}) carregados!`;
+                : `Total de vezes que o colaborador (${colaboratorId}) comeu durante o mês (${month}) carregados!`;
 
             return res.status(200).json(GoogleSheetsResponse.successMessage(
                 responseMessage,
                 mealCountByColaborator
+            ));
+        }
+        catch(err: any){
+            next(err);
+        }
+    }
+
+    listMealCountBySectorByMonth = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
+
+        try{
+            const { sector, month } = req.params;
+            const { turn } = req.query;
+
+            const mealCountBySector: number = await this.recordsService.listMealCountBySectorByMonth(
+                this.sheetName,
+                sector as string,
+                month as string,
+                turn as string
+            );
+
+            const responseMessage = 
+                turn ?
+                `Total de vezes que o setor (${sector}) comeu durante o mês (${month}) no turno (${turn}) carregados!`
+                : `Total de vezes que o setor (${sector}) comeu durante o mês (${month}) carregados!`;
+
+            return res.status(200).json(GoogleSheetsResponse.successMessage(
+                responseMessage,
+                mealCountBySector
             ));
         }
         catch(err: any){

@@ -9,9 +9,9 @@ router.get('/', recordsController.getAll);
 router.get('/sector/:sector', recordsController.listBySector);
 router.get('/day/:day', recordsController.listByDay);
 router.get('/entry/:turn', recordsController.listEntryByTurn);
-router.get('/meal/:colaboratorId/:month', recordsController.listMealCountByColaboratorId);
+router.get('/meal/colaborator/:colaboratorId/:month', recordsController.listMealCountByColaboratorIdByMonth);
+router.get('/meal/sector/:sector/:month', recordsController.listMealCountBySectorByMonth);
 router.post('/', recordsController.sendRecord);
-// sheetsRouter.patch('/sheets', sheetsController.updateData);
 
 const recordsRouter = {
     prefix: '/records',

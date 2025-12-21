@@ -24,7 +24,7 @@ export async function verifyAndSerializeRecordsCache(
         );
 
         if(!serializedRecords.valid)
-            throw new ApiException('Nenhum registro foi encontrado!', 404);
+            throw new ApiException('Nenhum registro foi encontrado na planilha!', 404);
 
         return serializedRecords.data!.map(mapSheetRowToRecord);
     }

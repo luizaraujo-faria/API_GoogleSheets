@@ -124,11 +124,11 @@ class RecordsService {
         return filteredRecords;
     }
 
-    listMealCountByColaboratorId = async (
+    listMealCountByColaboratorIdByMonth = async (
         range: string, 
         colaboratorId: string, 
         month: string, 
-        turn: string | undefined
+        turn?: string
     ): Promise<number> => {
 
         let serializedTurn: Turns | undefined = undefined;
@@ -147,14 +147,11 @@ class RecordsService {
             range
         );
 
-        // console.log(`CACHE DOS DADOS APÓS FUNÇÃO: ${this.recordsCache?.length}`)
-
         const filteredRecordsByColaboratorId: TimeRecord[] = searchInSheet<TimeRecord>({
             data: this.recordsCache!,
             filters: { colaboratorId }
         });
 
-        console.log(`CACHE DA PLANILHA: ${this.recordsCache![this.recordsCache!.length - 1]}`)
         const monthlyRecords: TimeRecord[] = filterByMonthAndYear<TimeRecord>(
             filteredRecordsByColaboratorId,
             targetMonth,
@@ -166,7 +163,53 @@ class RecordsService {
             : monthlyRecords;
     
         if(!finalFilteredRecords || finalFilteredRecords.length === 0)
-            throw new ApiException('Nenhum registro encontrado!', 404);
+            throw new ApiException('Nenhum registro encontrado para este colaborador neste mês e ou turno!', 404);
+
+        const mealCount: number = finalFilteredRecords.length;
+
+        return mealCount;
+    }
+
+    listMealCountBySectorByMonth = async (
+        range: string,
+        sector: string,
+        month: string,
+        turn?: string
+    ): Promise<number> => {
+
+        let serializedTurn: Turns | undefined = undefined;
+        const currentYear = dayjs().year();
+        const targetMonth = Number(month);
+
+        if(isNaN(targetMonth) || targetMonth < 1 || targetMonth > 12)
+            throw new ApiException('Mês informado é inválido!', 400);
+
+        if(turn) serializedTurn = turnsTypeSchema.parse(turn?.toLowerCase()) as Turns;
+
+        this.recordsCache = await verifyAndSerializeRecordsCache(
+            this.recordsCache,
+            this.sheets,
+            this.spreadSheetId,
+            range
+        );
+
+        const filteredRecordsBySector: TimeRecord[] = searchInSheet<TimeRecord>({
+            data: this.recordsCache!,
+            filters: { sector }
+        });
+
+        const monthlyRecords: TimeRecord[] = filterByMonthAndYear<TimeRecord>(
+            filteredRecordsBySector,
+            targetMonth,
+            currentYear,
+        );
+
+        const finalFilteredRecords: TimeRecord[] = turn ? 
+            filterByTurn<TimeRecord>(monthlyRecords, 'entry', serializedTurn!) 
+            : monthlyRecords;
+    
+        if(!finalFilteredRecords || finalFilteredRecords.length === 0)
+            throw new ApiException('Nenhum registro encontrado para este setor neste mês e ou turno!', 404);
 
         const mealCount: number = finalFilteredRecords.length;
 
