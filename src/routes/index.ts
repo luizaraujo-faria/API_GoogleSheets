@@ -1,5 +1,5 @@
 import recordsRouter from "./records.route";
-import colaboratorRouter from "./colaborator.route";
+import collaboratorRouter from "./collaborator.route";
 import { Router } from 'express';
 
 type RouteType = {
@@ -9,7 +9,7 @@ type RouteType = {
 
 const routes: RouteType[] = [
     recordsRouter,
-    colaboratorRouter,
+    collaboratorRouter,
 ]
 
 export default routes;

@@ -1,13 +1,13 @@
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { Turns, TurnsRange } from "../constants/turns";
-import { Colaborator } from "../types/colaborator";
+import { Collaborator } from "../types/collaborator";
 dayjs.extend(customParseFormat);
 
 export function mapSheetRowToRecord(row: Record<string, any>) {
 
     return {
-        colaboratorId: row["Colaborador_ID"] ?? "",
+        collaboratorId: row["Colaborador_ID"] ?? "",
         name: row["Nome"] ?? "",
         sector: row["Setor"] ?? "",
         day: row["Dia"] ?? "",
@@ -17,12 +17,13 @@ export function mapSheetRowToRecord(row: Record<string, any>) {
     };
 }
 
-export function mapSheetRowToColaborator(row: Colaborator | any) {
+export function mapSheetRowToCollaborator(row: Collaborator | any) {
 
     return {
-        colaboratorId: row["Colaborador_ID"] ?? "",
+        collaboratorId: row["Colaborador_ID"] ?? "",
         name: row["Nome"] ?? "",
-        sector: row["Setor"] ?? ""
+        sector: row["Setor"] ?? "",
+        type: row["Tipo"] ?? "",
     };
 }
 

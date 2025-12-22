@@ -1,16 +1,16 @@
 import googleSheetsService from "../config/googleSheets";
 import ApiException from "../errors/ApiException";
-import { Colaborator, colaboratorType, colaboratorTypeSchema, CreateColaboratorDTO } from "../types/colaborator";
+import { Collaborator, collaboratorType, collaboratorTypeSchema, CreateCollaboratorDTO } from "../types/collaborator";
 import { searchInSheet } from "../utils/filters";
-import { mapSheet, mapSheetRowToColaborator } from "../utils/mappers";
+import { mapSheet, mapSheetRowToCollaborator } from "../utils/mappers";
 import { validateParams, validateSheetData } from "../utils/validators";
 
-class ColaboratorService {
+class CollaboratorService {
 
     private readonly sheets: any = googleSheetsService.getSheetsApi;
     private readonly spreadSheetId?: string = googleSheetsService.getSpreadsheetId;
 
-    getAll = async (range: string): Promise<Colaborator[]> => {
+    getAll = async (range: string): Promise<Collaborator[]> => {
 
         if(!range || range === undefined)
             throw new ApiException('Nome da folha não informado!', 400);
@@ -20,36 +20,36 @@ class ColaboratorService {
             range
         });
 
-        const serializedColaborators = validateSheetData<Colaborator>(
-            mapSheet<Colaborator>(response.data.values)
+        const serializedColaborators = validateSheetData<Collaborator>(
+            mapSheet<Collaborator>(response.data.values)
         );
         if(!serializedColaborators.valid)
             throw new ApiException('Nenhum colaborador encontrado na planilha!', 404);
 
-        const mappedColaborators = serializedColaborators.data!.map(mapSheetRowToColaborator);
+        const mappedColaborators = serializedColaborators.data!.map(mapSheetRowToCollaborator);
 
         return mappedColaborators;
     }
 
-    getById = async (range: string, colaboratorId: string | number): Promise<Colaborator> => {
+    getById = async (range: string, colaboratorId: string | number): Promise<Collaborator> => {
 
-        const serializedId: number | string = colaboratorTypeSchema.colaboratorId.parse(colaboratorId);
+        const serializedId: number | string = collaboratorTypeSchema.collaboratorId.parse(colaboratorId);
 
         const response = await this.sheets.spreadsheets.values.get({
             spreadsheetId: this.spreadSheetId,
             range
         });
 
-        const serializedColaborators = validateSheetData<Colaborator>(
-            mapSheet<Colaborator>(response.data.values)
+        const serializedColaborators = validateSheetData<Collaborator>(
+            mapSheet<Collaborator>(response.data.values)
         );
         if(!serializedColaborators.valid)
             throw new ApiException('Nenhum colaborador encontrado na planilha!', 404);
 
-        const mappedColaborators = serializedColaborators.data!.map(mapSheetRowToColaborator);
-        const filteredById = searchInSheet<Colaborator>({
+        const mappedColaborators = serializedColaborators.data!.map(mapSheetRowToCollaborator);
+        const filteredById = searchInSheet<Collaborator>({
             data: mappedColaborators,
-            filters: { colaboratorId: serializedId }
+            filters: { collaboratorId: serializedId }
         });
 
         if(!filteredById || filteredById.length === 0)
@@ -58,23 +58,23 @@ class ColaboratorService {
         return filteredById[0];
     }
 
-    listBySector = async (range: string, sector: string): Promise<Colaborator[]> => {
+    listBySector = async (range: string, sector: string): Promise<Collaborator[]> => {
 
-        const serializedSector: string = colaboratorTypeSchema.sector.parse(sector);
+        const serializedSector: string = collaboratorTypeSchema.sector.parse(sector);
 
         const response = await this.sheets.spreadsheets.values.get({
             spreadsheetId: this.spreadSheetId,
             range
         });
 
-        const serializedColaborators = validateSheetData<Colaborator>(
-            mapSheet<Colaborator>(response.data.values)
+        const serializedColaborators = validateSheetData<Collaborator>(
+            mapSheet<Collaborator>(response.data.values)
         );
         if(!serializedColaborators.valid)
             throw new ApiException('Nenhum colaborador encontrado na planilha!', 404);
 
-        const mappedColaborators = serializedColaborators.data!.map(mapSheetRowToColaborator);
-        const filteredColaborators = searchInSheet<Colaborator>({
+        const mappedColaborators = serializedColaborators.data!.map(mapSheetRowToCollaborator);
+        const filteredColaborators = searchInSheet<Collaborator>({
             data: mappedColaborators,
             filters: { sector: serializedSector }
         });
@@ -85,7 +85,7 @@ class ColaboratorService {
         return filteredColaborators;
     }
 
-    createColaborator = async (range: string, values: unknown[][]): Promise<void> => {
+    createCollaborator = async (range: string, values: unknown[][]): Promise<void> => {
 
         validateParams(values, 'Dados do colaborador');
 
@@ -102,9 +102,9 @@ class ColaboratorService {
             sector: dataRow[2]
         }
 
-        const serializedData: CreateColaboratorDTO = colaboratorType.parse(data);
+        const serializedData: CreateCollaboratorDTO = collaboratorType.parse(data);
         const dataToMatrix = [[
-            serializedData.colaboratorId,
+            serializedData.collaboratorId,
             serializedData.name,
             serializedData.sector
         ]];
@@ -120,4 +120,4 @@ class ColaboratorService {
     }
 }
 
-export default ColaboratorService;
+export default CollaboratorService;

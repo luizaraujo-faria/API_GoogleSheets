@@ -2,7 +2,7 @@ import z from 'zod';
 
 export const recordTypeFields = {
 
-    colaboratorId: z.union([
+    collaboratorId: z.union([
             z.number({
                 required_error: 'ID do colaborador é obrigatório!',
                 invalid_type_error: 'ID deve ser um texto ou número!'
@@ -70,7 +70,7 @@ export const recordTypeFields = {
     .nonnegative()
 }
 
-export const colaboratorIdSchema = z.union([
+export const collaboratorIdSchema = z.union([
     z.number({
         required_error: 'ID do colaborador é obrigatório!',
         invalid_type_error: 'ID deve ser um texto ou número!'
@@ -90,7 +90,7 @@ export const createRecordRequestSchema = z.object({
 
     values: z.array(
         z.tuple([
-            colaboratorIdSchema
+            collaboratorIdSchema
         ])
     ).min(1, 'Envie ao menos um colaborador')
 });
@@ -99,7 +99,7 @@ export const recordType = z.object(recordTypeFields);
 export const recordTypePartial = z.object(recordTypeFields).partial();
 
 export interface TimeRecord {
-    colaboratorId: number | string;
+    collaboratorId: number | string;
     name: string;
     sector: string;
     day: Date | string;
@@ -109,11 +109,11 @@ export interface TimeRecord {
 }
 
 export interface CreateRecordDTO {
-    colaboratorId: number | string;
+    collaboratorId: number | string;
 }
 
 export interface RecordsFilter {
-    colaboratorId?: number;
+    collaboratorId?: number;
     name?: string;
     sector?: string;
     day?: Date;

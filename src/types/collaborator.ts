@@ -1,7 +1,7 @@
-import z, { TypeOf } from 'zod';
+import z from 'zod';
 
-export const colaboratorTypeSchema = {
-    colaboratorId: z.union([
+export const collaboratorTypeSchema = {
+    collaboratorId: z.union([
         z.number({
             required_error: 'ID do colaborador é obrigatório!',
             invalid_type_error: 'ID deve ser um texto ou número!'
@@ -31,25 +31,32 @@ export const colaboratorTypeSchema = {
         .min(2, 'Deve conter no mínimo duas letras!')
         .nonempty(),
     
+    type: z.enum(['residente', 'visitante', 'terceirizado', 'colaborador'], {
+        required_error: 'Tipo de colaborador é obrigatório!',
+        invalid_type_error: 'Tipo de colaborador inválido!'
+    })
 };
 
-export const colaboratorType = z.object(colaboratorTypeSchema);
-export const colaboratorTypePartial = z.object(colaboratorTypeSchema).partial();
+export const collaboratorType = z.object(collaboratorTypeSchema);
+export const collaboratorTypePartial = z.object(collaboratorTypeSchema).partial();
 
-export interface Colaborator {
-    colaboratorId: number | string;
+export interface Collaborator {
+    collaboratorId: number | string;
     name: string;
     sector: string;
+    type: string;
 }
 
-export interface CreateColaboratorDTO {
-    colaboratorId: number | string;
+export interface CreateCollaboratorDTO {
+    collaboratorId: number | string;
     name: string;
     sector: string;
+    type: string;
 }
 
-export interface ColaboratorFilter {
-    colaboratorId?: number | string;
+export interface CollaboratorFilter {
+    collaboratorId?: number | string;
     name?: string;
     sector?: string;
+    type?: string;
 }

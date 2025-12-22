@@ -3,7 +3,7 @@ import googleSheetsService from "../config/googleSheets";
 import { mapSheet, mapSheetRowToRecord } from "../utils/mappers";
 import { filterByMonthAndYear, filterByTurn, searchInSheet } from "../utils/filters";
 import { validateSheetData } from "../utils/validators";
-import { colaboratorIdSchema, recordTypeFields, TimeRecord } from "../types/records";
+import { collaboratorIdSchema, recordTypeFields, TimeRecord } from "../types/records";
 import dayjs from "dayjs";
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
@@ -117,7 +117,7 @@ class RecordsService {
     // LISTA QUANTA VEZES UM COLABORADOR COMEU
     listMealCountByColaboratorIdByMonth = async (
         range: string, 
-        colaboratorId: string, 
+        collaboratorId: string, 
         month: string, 
         turn?: string
     ): Promise<number> => {
@@ -136,7 +136,7 @@ class RecordsService {
         // FILTRA PELO ID DO COLABORADOR
         const filteredRecordsByColaboratorId: TimeRecord[] = searchInSheet<TimeRecord>({
             data: records,
-            filters: { colaboratorId }
+            filters: { collaboratorId }
         });
 
         // FILTRA PELO MES RECEBIDO
@@ -400,7 +400,7 @@ class RecordsService {
             const rawColabId = record[0];
 
             // VALIDA CADA ID RECEBIDO
-            const serializedId = colaboratorIdSchema.parse(String(rawColabId).trim());
+            const serializedId = collaboratorIdSchema.parse(String(rawColabId).trim());
             const key = `${serializedId}_${today}`;
 
             const foundRowIndex = openEntryIndex.get(key);

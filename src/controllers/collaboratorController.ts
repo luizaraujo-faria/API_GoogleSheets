@@ -1,18 +1,18 @@
 import { NextFunction, Request, Response } from "express";
 import GoogleSheetsResponse from "../responses/googleSheetsResponse";
-import ColaboratorService from "../services/colaboratorService";
-import { Colaborator } from "../types/colaborator";
+import CollaboratorService from "../services/collaboratorService";
+import { Collaborator } from "../types/collaborator";
 
-class ColaboratorController {
+class CollaboratorController {
 
     public readonly range: string = 'Página1!A:Z';
     public readonly sheetName: string = 'Colaboradores';
-    private readonly colaboratorService: ColaboratorService;
+    private readonly collaboratorService: CollaboratorService;
 
-    constructor(colaboratorService: ColaboratorService){
-        this.colaboratorService = colaboratorService;
+    constructor(collaboratorService: CollaboratorService){
+        this.collaboratorService = collaboratorService;
 
-        if(!this.colaboratorService){
+        if(!this.collaboratorService){
             throw new Error('Dependencia não injetada corretamente');
         }
     }
@@ -21,13 +21,13 @@ class ColaboratorController {
 
         try{
 
-            const colaborators: Colaborator[] = await this.colaboratorService.getAll(
+            const collaborators: Collaborator[] = await this.collaboratorService.getAll(
                 this.sheetName as string
             );
 
             return res.status(200).json(GoogleSheetsResponse.successMessage(
                 'Colaboradores buscados com sucesso!',
-                colaborators
+                collaborators
             ));
         }
         catch(err: any){
@@ -41,16 +41,16 @@ class ColaboratorController {
     getById = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
 
         try{
-            const { colaboratorId } = req.params;
+            const { collaboratorId } = req.params;
 
-            const colaborator: Colaborator = await this.colaboratorService.getById(
+            const collaborator: Collaborator = await this.collaboratorService.getById(
                 this.sheetName as string,
-                colaboratorId
+                collaboratorId
             );
 
             return res.status(200).json(GoogleSheetsResponse.successMessage(
                 'Colaborador buscado pelo id com sucesso!',
-                colaborator
+                collaborator
             ));
         }
         catch(err: any){
@@ -63,14 +63,14 @@ class ColaboratorController {
         try{
             const { sector } = req.params;
 
-            const colaborators: Colaborator[] = await this.colaboratorService.listBySector(
+            const collaborators: Collaborator[] = await this.collaboratorService.listBySector(
                 this.sheetName as string,
                 sector
             );
 
             return res.status(200).json(GoogleSheetsResponse.successMessage(
                 'Colaboradore listados por setor com sucesso!',
-                colaborators
+                collaborators
             ))
         }
         catch(err: any){
@@ -78,13 +78,13 @@ class ColaboratorController {
         }
     }
 
-    createColaborator = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
+    createCollaborator = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
 
         try{
             
             const { values } = req.body;
 
-            await this.colaboratorService.createColaborator(
+            await this.collaboratorService.createCollaborator(
                 this.sheetName,
                 values
             );
@@ -100,4 +100,4 @@ class ColaboratorController {
     }
 }
 
-export default ColaboratorController;
+export default CollaboratorController;
