@@ -20,14 +20,23 @@
 
 (Pasta principal)
 - src/
+  
     ├── config/ - Guarda principalmente a configuração da GoogleSheetsAPI.
+  
     ├── constansts/ - Guarda objetos ou estrutura com valores constantes reutilizáveis.
+  
     ├── controllers/ - Controladores dos endpoints.
+  
     ├── errors/ - Classes de erros personalizados.
+  
     ├── responses/ - Classes de respostas personalizadas.
+  
     ├── routes/ - Rotas dos endpoints da aplicação.
+  
     ├── services/ - Regras de negócio de cada entidade e endpoint.
+  
     ├── types/ - Tipos e entidades da aplicação (models).
+  
     ├── utils/ - Funções e clases utilitárias da aplicação.
 
     ├── server.ts - Arquivo principal de configuração e execução do servidor.
