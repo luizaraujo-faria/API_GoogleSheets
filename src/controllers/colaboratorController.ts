@@ -2,7 +2,6 @@ import { NextFunction, Request, Response } from "express";
 import GoogleSheetsResponse from "../responses/googleSheetsResponse";
 import ColaboratorService from "../services/colaboratorService";
 import { Colaborator } from "../types/colaborator";
-import { nextTick } from "process";
 
 class ColaboratorController {
 
@@ -82,7 +81,7 @@ class ColaboratorController {
     createColaborator = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
 
         try{
-
+            
             const { values } = req.body;
 
             await this.colaboratorService.createColaborator(

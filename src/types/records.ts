@@ -85,6 +85,16 @@ export const colaboratorIdSchema = z.union([
     .nonempty()
 ]);
 
+export const createRecordRequestSchema = z.object({
+    range: z.string().optional(),
+
+    values: z.array(
+        z.tuple([
+            colaboratorIdSchema
+        ])
+    ).min(1, 'Envie ao menos um colaborador')
+});
+
 export const recordType = z.object(recordTypeFields);
 export const recordTypePartial = z.object(recordTypeFields).partial();
 
@@ -99,7 +109,7 @@ export interface TimeRecord {
 }
 
 export interface CreateRecordDTO {
-    colaboratorId: number;
+    colaboratorId: number | string;
 }
 
 export interface RecordsFilter {

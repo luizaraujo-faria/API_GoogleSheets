@@ -1,8 +1,8 @@
 import { NextFunction, Request, Response } from 'express';
-import googleSheetsService from '../config/googleSheets';
 import GoogleSheetsResponse from '../responses/googleSheetsResponse';
 import RecordsService from '../services/recordsService';
 import { TimeRecord } from '../types/records';
+import { createRecordRequestSchema } from "../types/records";
 
 class RecordsController{
 
@@ -219,7 +219,7 @@ class RecordsController{
     ): Promise<Response | void> => {
 
         try{
-            const values = req.body;
+            const { values } = createRecordRequestSchema.parse(req.body);
 
             await this.recordsService.sendRecord(this.sheetName, values);
 

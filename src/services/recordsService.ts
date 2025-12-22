@@ -2,14 +2,14 @@ import ApiException from "../errors/ApiException";
 import googleSheetsService from "../config/googleSheets";
 import { mapSheet, mapSheetRowToRecord } from "../utils/mappers";
 import { filterByMonthAndYear, filterByTurn, searchInSheet } from "../utils/filters";
-import { validateParams, validateSheetData } from "../utils/validators";
-import { colaboratorIdSchema, CreateRecordDTO, recordTypeFields, TimeRecord } from "../types/records";
+import { validateSheetData } from "../utils/validators";
+import { colaboratorIdSchema, recordTypeFields, TimeRecord } from "../types/records";
 import dayjs from "dayjs";
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { Turns, turnsTypeSchema } from "../constants/turns";
-import { verifyAndUpdateRecordsCache } from "../utils/validateRecordCache";
+import { recordsCache } from "../cache/recordsCache";
 
 dayjs.extend(customParseFormat);
 dayjs.extend(utc)
@@ -20,44 +20,49 @@ class RecordsService {
     private readonly sheets: any = googleSheetsService.getSheetsApi;
     private readonly spreadSheetId: string | undefined = googleSheetsService.getSpreadsheetId;
 
-    private recordsCache: TimeRecord[] | undefined;
+    // MÉTODO PARA CARREGAR E SALVAR OS DADOS EM CACHE
+    private async loadRecords(range: string): Promise<TimeRecord[]> {
 
-    async getAll(range: string): Promise<TimeRecord[]> {
+        // BUSCA O CACHE
+        const cached = recordsCache.get(range);
+        if(cached) return cached; // SE EXISTIR O RETORNA
 
+        // SENÃO, FAZ UMA NOVA BUSCA
         const response = await this.sheets.spreadsheets.values.get({
             spreadsheetId: this.spreadSheetId,
-            range
+            range,
         });
 
+        // SERIALIZA E FORMATA OS DADOS DA PLANILHA UMA VEZ SÓ
         const serializedRecords = validateSheetData<TimeRecord>(
             mapSheet<TimeRecord>(response.data.values)
         );
 
         if(!serializedRecords.valid)
-            throw new ApiException('Nenhum registro de horário encontrado!', 404);
+            throw new ApiException('Nenhum registro encontrado!', 404);
 
-        const mappedRecords: TimeRecord[] = serializedRecords.data!.map(mapSheetRowToRecord);
-            
-        return mappedRecords;
+        const mapped = serializedRecords.data!.map(mapSheetRowToRecord);
+
+        recordsCache.set(range, mapped);
+        return mapped; // RETORNA DADOS SERIALIZADOS E FORMATADOS
     }
 
+    // BUSCA TODOS
+    async getAll(range: string): Promise<TimeRecord[]> {
+
+        const records: TimeRecord[] = await this.loadRecords(range);
+        return records;
+    }
+
+    // LISTA REGISTROS PELO SETOR
     async listBySector(range: string, sector: string): Promise<TimeRecord[]> {
 
-        const serializedSector = recordTypeFields.sector.parse(sector);
+        const serializedSector = recordTypeFields.sector.parse(sector); // VALIDA O SETOR RECEBIDO
+        const records: TimeRecord[] = await this.loadRecords(range); // PEGA O CACHE OU DA PLANILHA
 
-        const response = await this.sheets.spreadsheets.values.get({
-            spreadsheetId: this.spreadSheetId,
-            range
-        });
-
-        const serializedRecords = validateSheetData<TimeRecord>(
-            mapSheet<TimeRecord>(response.data.values)
-        );
-        if(!serializedRecords.valid)
-            throw new ApiException('Nenhum registro foi encontrado!', 404);
-
+        // FILTRA PELO SETOR
         const filteredRecords: TimeRecord[] = searchInSheet<TimeRecord>({
-            data: serializedRecords.data!.map(mapSheetRowToRecord),
+            data: records,
             filters: { sector: serializedSector }
         });
 
@@ -67,27 +72,21 @@ class RecordsService {
         return filteredRecords;
     }
 
+    // LISTA REGISTROS PELO DIA
     listByDay = async (range: string, day: string): Promise<TimeRecord[]> => {
 
-        const serializedDay = recordTypeFields.day.parse(day);
+        const serializedDay = recordTypeFields.day.parse(day); // VALIDA A DATA RECEBIDA
 
+        // FORMATA A DATA
         const formattedDay: dayjs.Dayjs = dayjs(serializedDay, 'DD/MM/YY');
         if(!formattedDay.isValid())
             throw new ApiException('Data recebida é inválida!', 400);
 
-        const response = await this.sheets.spreadsheets.values.get({
-            spreadsheetId: this.spreadSheetId,
-            range
-        });
+        const records: TimeRecord[] = await this.loadRecords(range);
 
-        const serializedRecords = validateSheetData<TimeRecord>(
-            mapSheet<TimeRecord>(response.data.values)
-        );
-        if(!serializedRecords.valid)
-            throw new ApiException('Nenhum registro foi encontrado!', 404);
-
+        // FILTRA PELA DATA
         const filteredRecords: TimeRecord[] = searchInSheet<TimeRecord>({
-            data: serializedRecords.data!.map(mapSheetRowToRecord),
+            data: records,
             filters: { day: formattedDay.format('DD/MM/YY') }
         });
 
@@ -97,24 +96,15 @@ class RecordsService {
         return filteredRecords;
     }
 
+    // LISTA REGISTROS PELO TURNO DE ENTRADA
     listEntryByTurn = async (range: string, turn: string): Promise<TimeRecord[]> => {
 
-        const serializedTurn: Turns = turnsTypeSchema.parse(turn.toLowerCase()) as Turns;
-        
-        const response = await this.sheets.spreadsheets.values.get({
-            spreadsheetId: this.spreadSheetId,
-            range
-        });
+        const serializedTurn: Turns = turnsTypeSchema.parse(turn.toLowerCase()) as Turns; // VALIDA O TURNO RECEBIDO
+        const records: TimeRecord[] = await this.loadRecords(range);
 
-        const serializedRecords = validateSheetData<TimeRecord>(
-            mapSheet<TimeRecord>(response.data.values)
-        );
-
-        if(!serializedRecords.valid)
-            throw new ApiException('Nenhum registro foi encontrado!', 404);
-
+        // FILTRA PELA TURNO DE ENTRADA
         const filteredRecords: TimeRecord[] = filterByTurn<TimeRecord>(
-            serializedRecords.data!.map(mapSheetRowToRecord),
+            records,
             'entry', serializedTurn
         );
 
@@ -124,6 +114,7 @@ class RecordsService {
         return filteredRecords;
     }
 
+    // LISTA QUANTA VEZES UM COLABORADOR COMEU
     listMealCountByColaboratorIdByMonth = async (
         range: string, 
         colaboratorId: string, 
@@ -131,33 +122,31 @@ class RecordsService {
         turn?: string
     ): Promise<number> => {
 
-        let serializedTurn: Turns | undefined = undefined;
+        let serializedTurn: Turns | undefined = undefined; // TURNO É OPCIONAL
         const currentYear = dayjs().year();
         const targetMonth = Number(month);
 
         if(isNaN(targetMonth) || targetMonth < 1 || targetMonth > 12)
             throw new ApiException('Mês informado é inválido!', 400);
 
-        if(turn) serializedTurn = turnsTypeSchema.parse(turn?.toLowerCase()) as Turns;
+        if(turn) serializedTurn = turnsTypeSchema.parse(turn?.toLowerCase()) as Turns; // VALIDA O TURNO SE EXISTIR
 
-        this.recordsCache = await verifyAndUpdateRecordsCache(
-            this.recordsCache,
-            this.sheets,
-            this.spreadSheetId,
-            range
-        );
+        const records = await this.loadRecords(range);
 
+        // FILTRA PELO ID DO COLABORADOR
         const filteredRecordsByColaboratorId: TimeRecord[] = searchInSheet<TimeRecord>({
-            data: this.recordsCache!,
+            data: records,
             filters: { colaboratorId }
         });
 
+        // FILTRA PELO MES RECEBIDO
         const monthlyRecords: TimeRecord[] | undefined = filterByMonthAndYear<TimeRecord>(
             filteredRecordsByColaboratorId,
             targetMonth,
             currentYear,
         );
 
+        // SE O TURNO FOR INFORMADO, FILTRA POR ELE, SENÃO SEGUE SOMENTE COM FILTROS PELO MES
         const finalFilteredRecords: TimeRecord[] | undefined = turn ? 
             filterByTurn<TimeRecord>(monthlyRecords!, 'entry', serializedTurn!) 
             : monthlyRecords;
@@ -170,6 +159,7 @@ class RecordsService {
         return mealCount;
     }
 
+    // LISTA QUANTIDADE DE VEZES QUE UM SETOR COMEU NO MES
     listMealCountBySectorByMonth = async (
         range: string,
         sector: string,
@@ -177,33 +167,31 @@ class RecordsService {
         turn?: string
     ): Promise<number> => {
 
-        let serializedTurn: Turns | undefined = undefined;
+        let serializedTurn: Turns | undefined = undefined; // TURNO É OPCIONAL
         const currentYear = dayjs().year();
         const targetMonth = Number(month);
 
         if(isNaN(targetMonth) || targetMonth < 1 || targetMonth > 12)
             throw new ApiException('Mês informado é inválido!', 400);
 
-        if(turn) serializedTurn = turnsTypeSchema.parse(turn?.toLowerCase()) as Turns;
+        if(turn) serializedTurn = turnsTypeSchema.parse(turn?.toLowerCase()) as Turns; // VALIDA TURNO
 
-        this.recordsCache = await verifyAndUpdateRecordsCache(
-            this.recordsCache,
-            this.sheets,
-            this.spreadSheetId,
-            range
-        );
+        const records = await this.loadRecords(range);
 
+        // FILTRA PELO SETOR
         const filteredRecordsBySector: TimeRecord[] = searchInSheet<TimeRecord>({
-            data: this.recordsCache!,
+            data: records,
             filters: { sector }
         });
 
+        // FILTRA PELO MES
         const monthlyRecords: TimeRecord[] | undefined = filterByMonthAndYear<TimeRecord>(
             filteredRecordsBySector,
             targetMonth,
             currentYear,
         );
 
+        // SE O TURNO FOR INFORMADO, FILTRA POR ELE, SENÃO SEGUE SOMENTE COM FILTROS PELO MES
         const finalFilteredRecords: TimeRecord[] | undefined = turn ? 
             filterByTurn<TimeRecord>(monthlyRecords!, 'entry', serializedTurn!) 
             : monthlyRecords;
@@ -216,55 +204,52 @@ class RecordsService {
         return mealCount;
     }
 
+    // LISTA OS SETORES QUE MAIS COMERAM NO MES
     listMostMealCountSectorsByMonth = async (
         range: string,
         month: string,
         turn?: string
     ): Promise<any[]> => {
 
-        let serializedTurn: Turns | undefined = undefined;
+        let serializedTurn: Turns | undefined = undefined; // TURNO É OPCIONAL
         const currentYear = dayjs().year();
         const targetMonth = Number(month);
 
         if(isNaN(targetMonth) || targetMonth < 1 || targetMonth > 12)
             throw new ApiException('Mês informado é inválido!', 400);
 
-        if(turn) serializedTurn = turnsTypeSchema.parse(turn?.toLowerCase()) as Turns;
+        if(turn) serializedTurn = turnsTypeSchema.parse(turn?.toLowerCase()) as Turns; // VALIDA TURNO
 
-        this.recordsCache = await verifyAndUpdateRecordsCache(
-            this.recordsCache,
-            this.sheets,
-            this.spreadSheetId,
-            range
-        );
+        const records = await this.loadRecords(range);
 
-        const records: TimeRecord[] | undefined = this.recordsCache;
-
+        // FILTRA PELO MES
         const monthlyRecords = filterByMonthAndYear(
             records,
             targetMonth,
             currentYear
         );
 
+        // SE O TURNO FOR INFORMADO, FILTRA POR ELE, SENÃO SEGUE SOMENTE COM FILTROS PELO MES
         const filteredRecordsByTurn: TimeRecord[] | undefined = turn ? 
             filterByTurn<TimeRecord>(monthlyRecords!, 'entry', serializedTurn!) 
             : monthlyRecords;
 
         const finalFilteredRecords = turn ? filteredRecordsByTurn : monthlyRecords;
 
-        const countBySector: any = {};
+        const countBySector: any = {}; // ARMAZENA CONTAGEM POR SETOR
 
         finalFilteredRecords!.forEach((record) => {
             const sector = record.sector;
 
-            if(!countBySector[sector]){
-                countBySector[sector] = 1;
+            if(!countBySector[sector]){ 
+                countBySector[sector] = 1; 
             }
             else{
-                countBySector[sector]++;
+                countBySector[sector]++; // SE ENCONTRAR ALGUM REGISTRO DAQUELE SETOR, ADICIONA MAIS 1
             }
         });
 
+        // ORDENA OS SETORES EM ORDEM DECRESCENTE
         const orderedRecords = Object.entries(countBySector)
             .map(([sector, total]) => ({ sector, total }))
             .sort((a: any, b: any) => ( b.total - a.total ));
@@ -274,13 +259,13 @@ class RecordsService {
         return mostFiveMealSectors;
     }
 
-    sendRecord = async (range: string, values: CreateRecordDTO[]): Promise<void> => {
+    // ENVIA DADOS / CRIA REGISTROS NA PLANILHA
+    sendRecord = async (range: string, values: Array<[number | string]>): Promise<void> => {
 
-        console.log('Serviço de registro disparado!');
-
-        // Normaliza para lista
+        // NORMALIZA OS DADDOS RECEBIDOS PARA ARRAY
         const records = Array.isArray(values) ? values : [values];
 
+        // RANGE DE ENVIOS ATUAL (LIMITA PAR NÃO BUSCAR MAIS QUE O NECESSÁRIO)
         const actualRange =
             range && range.includes("!") ? range : `${range || "EntradaSaida"}!A:F`;
 
@@ -288,15 +273,15 @@ class RecordsService {
             ? actualRange.split("!")[0]
             : actualRange;
 
-        // Ler planilha APENAS 1 vez
+        // LEITURA ÚNICA NA PLANILHA
         const readResponse = await this.sheets.spreadsheets.values.get({
             spreadsheetId: this.spreadSheetId,
             range: `${sheetName}!A:F`,
         });
 
-        const rows = (readResponse.data && readResponse.data.values) || [];
+        const rows = readResponse.data?.values || [];
 
-        // Detectar header
+        // DETECTA HEADER
         const hasHeader =
             rows.length > 0 &&
             rows[0].some(
@@ -306,99 +291,94 @@ class RecordsService {
 
         const dataStartIndex = hasHeader ? 1 : 0;
 
-        // Índices fixos
+        // INDICES FIXOS
         const idxColab = 0;
         const idxDay = 3;
         const idxEntry = 4;
         const idxExit = 5;
 
-        // Cache da data de hoje
         const today = dayjs().format("DD/MM/YY");
 
-        // Acumular updates para saída
+        // VARIAVEIS PARA GUARDAR O QUE SERÁ ESCRITO
         const updatesToApply: { range: string; values: any[][] }[] = [];
-
-        // Acumular novas linhas
         const rowsToAppend: any[][] = [];
 
-        // PROCESSAMENTO DOS REGISTROS (LOOP PRINCIPAL)
-        for (const record of records) {
-            // Validar ID
-        const serializedId = colaboratorIdSchema.parse(String(record).trim());
+        // PRÉ-INDEXAÇÃO (VARRE A PLANILHA UMA UNÍCA VEZ)
+        const openEntryIndex = new Map<string, number>();
 
-            let foundRowIndex: number | null = null;
+        for (let i = rows.length - 1; i >= dataStartIndex; i--) {
+            const row = rows[i] || [];
 
-            // Encontrar linha existente
-            for (let i = rows.length - 1; i >= dataStartIndex; i--) {
-                const row = rows[i] || [];
+            const colab = row[idxColab]?.toString().trim();
+            const rawDay = row[idxDay]?.toString().trim();
+            const entry = row[idxEntry]?.toString().trim();
+            const exit = row[idxExit]?.toString().trim();
 
-                const rowColab = row[idxColab] ? String(row[idxColab]).trim() : "";
-                if (rowColab !== serializedId) continue;
+            if (!colab || !rawDay || !entry) continue;
 
-                const rawDay = row[idxDay] ? String(row[idxDay]).trim() : "";
-                const rowDayNormalized = rawDay
-                    ? dayjs(rawDay, [
-                        "DD/MM/YY",
-                        "DD/MM/YYYY",
-                        "YYYY-MM-DD",
-                    ]).format("DD/MM/YY")
-                    : "";
+            const normalizedDay = dayjs(rawDay, [
+                "DD/MM/YY",
+                "DD/MM/YYYY",
+                "YYYY-MM-DD",
+            ]).format("DD/MM/YY");
 
-                if (rowDayNormalized !== today) continue;
+            const exitIsEmpty =
+                !exit || exit === "xx:xx" || exit === "XX:XX" || exit === "N/A";
 
-                const entry = row[idxEntry] ? String(row[idxEntry]).trim() : "";
-                const exit = row[idxExit] ? String(row[idxExit]).trim() : "";
-
-                const exitIsEmpty =
-                    !exit || exit === "xx:xx" || exit === "XX:XX" || exit === "N/A";
-
-                if (entry && exitIsEmpty) {
-                    foundRowIndex = i;
-                    break;
-                }
+            if (exitIsEmpty) {
+                openEntryIndex.set(`${colab}_${normalizedDay}`, i);
             }
+        }
 
-            // Atualizar saída de um registro existente
-            if (foundRowIndex !== null) {
+        // CONVERTE INDICE DE SAÍDA DA COLUNA PARA LETRA
+        const exitColumnLetter = (() => {
+            let n = idxExit;
+            let s = "";
+            while (n >= 0) {
+                s = String.fromCharCode((n % 26) + 65) + s;
+                n = Math.floor(n / 26) - 1;
+            }
+            return s;
+        })();
+
+        // PROCESSAMENTO DOS REGISTROS
+        for(const record of records) {
+
+            const rawColabId = record[0];
+
+            // VALIDA CADA ID RECEBIDO
+            const serializedId = colaboratorIdSchema.parse(String(rawColabId).trim());
+            const key = `${serializedId}_${today}`;
+
+            const foundRowIndex = openEntryIndex.get(key);
+
+            // ATUALIZA SAÍDA
+            if(foundRowIndex !== undefined) {
                 const spreadsheetRow = foundRowIndex + 1;
-                const nowTime = dayjs().tz('America/Sao_Paulo').format("HH:mm");
+                const nowTime = dayjs()
+                    .tz("America/Sao_Paulo")
+                    .format("HH:mm");
 
-                console.log(`DATA DE SAIDA: ${nowTime}`)
-
-                // Converter idxExit → letra
-                const exitColumnLetter = (() => {
-                    let n = idxExit;
-                    let s = "";
-                    while (n >= 0) {
-                        s = String.fromCharCode((n % 26) + 65) + s;
-                        n = Math.floor(n / 26) - 1;
-                    }
-                    return s;
-                })();
-
-                const updateRange = `${sheetName}!${exitColumnLetter}${spreadsheetRow}`;
-
-                // Acumula para batchUpdate (não envia ainda)
                 updatesToApply.push({
-                    range: updateRange,
+                    range: `${sheetName}!${exitColumnLetter}${spreadsheetRow}`,
                     values: [[nowTime]],
                 });
 
+                // EVITA REUTILIZAR A MESMA SAIDA
+                openEntryIndex.delete(key);
                 continue;
             }
 
-            // Criar nova linha
+            // CRIA NOVA LINHA (ENTRADA)
             const newRow: any[] = [];
             newRow[idxColab] = serializedId;
 
             rowsToAppend.push(newRow);
-
-            // Adiciona localmente para futuras detecções dentro do mesmo lote
-            rows.push(newRow);
         }
+        
+        // EXECUTA UPDATES EM LOTE (SAÍDA)
+        if(updatesToApply.length > 0){
 
-        // EXECUTAR UPDATES EM LOTE (saídas)
-        if (updatesToApply.length > 0) {
             await this.sheets.spreadsheets.values.batchUpdate({
                 spreadsheetId: this.spreadSheetId,
                 requestBody: {
@@ -408,8 +388,9 @@ class RecordsService {
             });
         }
 
-        // ADICIONAR NOVAS LINHAS (append único)
-        if (rowsToAppend.length > 0) {
+        // ENVIO ÚNICO (NOVOS REGISTROS)
+        if(rowsToAppend.length > 0){
+
             await this.sheets.spreadsheets.values.append({
                 spreadsheetId: this.spreadSheetId,
                 range: `${sheetName}!A:G`,
@@ -419,6 +400,9 @@ class RecordsService {
                 },
             });
         }
+
+        // INVALIDA CACHE
+        recordsCache.clear();
 
         return;
     };
