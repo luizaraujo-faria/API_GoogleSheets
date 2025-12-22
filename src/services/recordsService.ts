@@ -259,6 +259,59 @@ class RecordsService {
         return mostFiveMealSectors;
     }
 
+    // LISTA O QUANTO CADA SETOR COMEU
+    listMealCountOfAllSectorsByMonth = async (
+        range: string,
+        month: string,
+        turn?: string
+    ): Promise<any[]> => {
+
+        let serializedTurn: Turns | undefined = undefined; // TURNO É OPCIONAL
+        const currentYear = dayjs().year();
+        const targetMonth = Number(month);
+
+        if(isNaN(targetMonth) || targetMonth < 1 || targetMonth > 12)
+            throw new ApiException('Mês informado é inválido!', 400);
+
+        if(turn) serializedTurn = turnsTypeSchema.parse(turn?.toLowerCase()) as Turns; // VALIDA TURNO
+
+        const records = await this.loadRecords(range);
+
+        // FILTRA PELO MES
+        const monthlyRecords = filterByMonthAndYear(
+            records,
+            targetMonth,
+            currentYear
+        );
+
+        // SE O TURNO FOR INFORMADO, FILTRA POR ELE, SENÃO SEGUE SOMENTE COM FILTROS PELO MES
+        const filteredRecordsByTurn: TimeRecord[] | undefined = turn ? 
+            filterByTurn<TimeRecord>(monthlyRecords!, 'entry', serializedTurn!) 
+            : monthlyRecords;
+
+        const finalFilteredRecords = turn ? filteredRecordsByTurn : monthlyRecords;
+
+        const countBySector: any = {}; // ARMAZENA CONTAGEM POR SETOR
+
+        finalFilteredRecords!.forEach((record) => {
+            const sector = record.sector;
+
+            if(!countBySector[sector]){ 
+                countBySector[sector] = 1; 
+            }
+            else{
+                countBySector[sector]++; // SE ENCONTRAR ALGUM REGISTRO DAQUELE SETOR, ADICIONA MAIS 1
+            }
+        });
+
+        // ORDENA OS SETORES EM ORDEM DECRESCENTE
+        const orderedRecords = Object.entries(countBySector)
+            .map(([sector, total]) => ({ sector, total }))
+            .sort((a: any, b: any) => ( b.total - a.total ));
+
+        return orderedRecords;
+    }
+
     // ENVIA DADOS / CRIA REGISTROS NA PLANILHA
     sendRecord = async (range: string, values: Array<[number | string]>): Promise<void> => {
 
