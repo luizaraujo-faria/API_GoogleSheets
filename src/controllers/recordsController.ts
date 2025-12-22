@@ -18,7 +18,10 @@ class RecordsController{
         }
     }
 
-    getAll = async (req: Request, res: Response): Promise<Response> => {
+    getAll = async (
+        req: Request, 
+        res: Response
+    ): Promise<Response> => {
         
         try{
             
@@ -42,7 +45,11 @@ class RecordsController{
         }
     }
 
-    listBySector = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
+    listBySector = async (
+        req: Request, 
+        res: Response, 
+        next: NextFunction
+    ): Promise<Response | void> => {
 
         try{
             const { sector } = req.params;
@@ -62,7 +69,11 @@ class RecordsController{
         }
     }
 
-    listByDay = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
+    listByDay = async (
+        req: Request, 
+        res: Response, 
+        next: NextFunction
+    ): Promise<Response | void> => {
 
         try{
             const { day } = req.params;
@@ -82,7 +93,11 @@ class RecordsController{
         }
     }
 
-    listEntryByTurn = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
+    listEntryByTurn = async (
+        req: Request, 
+        res: Response, 
+        next: NextFunction
+    ): Promise<Response | void> => {
     
         try{
             const { turn } = req.params;
@@ -102,7 +117,11 @@ class RecordsController{
         }
     }
 
-    listMealCountByColaboratorIdByMonth = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
+    listMealCountByColaboratorIdByMonth = async (
+        req: Request, 
+        res: Response, 
+        next: NextFunction
+    ): Promise<Response | void> => {
 
         try{
             const { colaboratorId, month } = req.params;
@@ -130,7 +149,11 @@ class RecordsController{
         }
     }
 
-    listMealCountBySectorByMonth = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
+    listMealCountBySectorByMonth = async (
+        req: Request, 
+        res: Response, 
+        next: NextFunction
+    ): Promise<Response | void> => {
 
         try{
             const { sector, month } = req.params;
@@ -158,7 +181,42 @@ class RecordsController{
         }
     }
 
-    sendRecord = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
+    listMostMealCountSectorsByMonth = async (
+        req: Request, 
+        res: Response, 
+        next: NextFunction
+    ): Promise<Response | void> => {
+
+        try{
+            const { month } = req.params;
+            const { turn } = req.query;
+
+            const mostMealSectors: any[] = await this.recordsService.listMostMealCountSectorsByMonth(
+                this.sheetName,
+                month as string,
+                turn as string
+            );
+
+            const responseMessage = 
+                turn ?
+                `Os 5 setores que mais comeram durante o mês (${month}) no turno (${turn}) carregados!`
+                : `Os 5 setores que mais comeram durante o mês (${month}) carregados!`;
+
+            return res.status(200).json(GoogleSheetsResponse.successMessage(
+                responseMessage,
+                mostMealSectors
+            ));
+        }
+        catch(err: any){
+            next(err);
+        }
+    }
+
+    sendRecord = async (
+        req: Request, 
+        res: Response, 
+        next: NextFunction
+    ): Promise<Response | void> => {
 
         try{
             const values = req.body;
@@ -174,27 +232,6 @@ class RecordsController{
             next(err);
         }
     }
-
-    // static async updateData(req: Request, res: Response){
-
-    //     try{
-    //         const { range, values } = req.body;
-
-    //         const updatedData = await googleSheetsService.getSheetsApi.spreadsheets.values.append({
-    //             spreadsheetId: googleSheetsService.getSpreadsheetId,
-    //             range: range || 'Página1!A:Z',
-    //             options: 'RAW',
-    //             requestBody: {
-    //                 values: [values]
-    //             }
-    //         });
-
-    //         return res.status(200).json({ success: true, message: 'Dados atualizados com sucesso!', data: updatedData.data })
-    //     }
-    //     catch(err: any){
-    //         res.status(500).json({ success: false, message: 'Falha ao atualizar dados!', error: err.message });
-    //     }
-    // }
 }
 
 export default RecordsController;

@@ -11,6 +11,7 @@ router.get('/day/:day', recordsController.listByDay);
 router.get('/entry/:turn', recordsController.listEntryByTurn);
 router.get('/meal/colaborator/:colaboratorId/:month', recordsController.listMealCountByColaboratorIdByMonth);
 router.get('/meal/sector/:sector/:month', recordsController.listMealCountBySectorByMonth);
+router.get('/meal/sector/:month', recordsController.listMostMealCountSectorsByMonth);
 router.post('/', recordsController.sendRecord);
 
 const recordsRouter = {

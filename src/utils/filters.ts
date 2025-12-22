@@ -31,12 +31,12 @@ export function searchInSheet<T>(params: {
 }
 
 export function filterByMonthAndYear<T extends TimeRecord>(
-    records: T[],
+    records: T[] | undefined,
     month: number,
     year: number
-): T[] {
+): T[] | undefined {
     
-    return records.filter(record => {
+    return records?.filter(record => {
 
         const date = dayjs(record.day, 'DD/MM/YY');
         if(!date.isValid()) return false;

@@ -9,7 +9,7 @@ import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { Turns, turnsTypeSchema } from "../constants/turns";
-import { verifyAndSerializeRecordsCache } from "../utils/validateRecordCache";
+import { verifyAndUpdateRecordsCache } from "../utils/validateRecordCache";
 
 dayjs.extend(customParseFormat);
 dayjs.extend(utc)
@@ -140,7 +140,7 @@ class RecordsService {
 
         if(turn) serializedTurn = turnsTypeSchema.parse(turn?.toLowerCase()) as Turns;
 
-        this.recordsCache = await verifyAndSerializeRecordsCache(
+        this.recordsCache = await verifyAndUpdateRecordsCache(
             this.recordsCache,
             this.sheets,
             this.spreadSheetId,
@@ -152,14 +152,14 @@ class RecordsService {
             filters: { colaboratorId }
         });
 
-        const monthlyRecords: TimeRecord[] = filterByMonthAndYear<TimeRecord>(
+        const monthlyRecords: TimeRecord[] | undefined = filterByMonthAndYear<TimeRecord>(
             filteredRecordsByColaboratorId,
             targetMonth,
             currentYear,
         );
 
-        const finalFilteredRecords: TimeRecord[] = turn ? 
-            filterByTurn<TimeRecord>(monthlyRecords, 'entry', serializedTurn!) 
+        const finalFilteredRecords: TimeRecord[] | undefined = turn ? 
+            filterByTurn<TimeRecord>(monthlyRecords!, 'entry', serializedTurn!) 
             : monthlyRecords;
     
         if(!finalFilteredRecords || finalFilteredRecords.length === 0)
@@ -186,7 +186,7 @@ class RecordsService {
 
         if(turn) serializedTurn = turnsTypeSchema.parse(turn?.toLowerCase()) as Turns;
 
-        this.recordsCache = await verifyAndSerializeRecordsCache(
+        this.recordsCache = await verifyAndUpdateRecordsCache(
             this.recordsCache,
             this.sheets,
             this.spreadSheetId,
@@ -198,14 +198,14 @@ class RecordsService {
             filters: { sector }
         });
 
-        const monthlyRecords: TimeRecord[] = filterByMonthAndYear<TimeRecord>(
+        const monthlyRecords: TimeRecord[] | undefined = filterByMonthAndYear<TimeRecord>(
             filteredRecordsBySector,
             targetMonth,
             currentYear,
         );
 
-        const finalFilteredRecords: TimeRecord[] = turn ? 
-            filterByTurn<TimeRecord>(monthlyRecords, 'entry', serializedTurn!) 
+        const finalFilteredRecords: TimeRecord[] | undefined = turn ? 
+            filterByTurn<TimeRecord>(monthlyRecords!, 'entry', serializedTurn!) 
             : monthlyRecords;
     
         if(!finalFilteredRecords || finalFilteredRecords.length === 0)
@@ -214,6 +214,64 @@ class RecordsService {
         const mealCount: number = finalFilteredRecords.length;
 
         return mealCount;
+    }
+
+    listMostMealCountSectorsByMonth = async (
+        range: string,
+        month: string,
+        turn?: string
+    ): Promise<any[]> => {
+
+        let serializedTurn: Turns | undefined = undefined;
+        const currentYear = dayjs().year();
+        const targetMonth = Number(month);
+
+        if(isNaN(targetMonth) || targetMonth < 1 || targetMonth > 12)
+            throw new ApiException('Mês informado é inválido!', 400);
+
+        if(turn) serializedTurn = turnsTypeSchema.parse(turn?.toLowerCase()) as Turns;
+
+        this.recordsCache = await verifyAndUpdateRecordsCache(
+            this.recordsCache,
+            this.sheets,
+            this.spreadSheetId,
+            range
+        );
+
+        const records: TimeRecord[] | undefined = this.recordsCache;
+
+        const monthlyRecords = filterByMonthAndYear(
+            records,
+            targetMonth,
+            currentYear
+        );
+
+        const filteredRecordsByTurn: TimeRecord[] | undefined = turn ? 
+            filterByTurn<TimeRecord>(monthlyRecords!, 'entry', serializedTurn!) 
+            : monthlyRecords;
+
+        const finalFilteredRecords = turn ? filteredRecordsByTurn : monthlyRecords;
+
+        const countBySector: any = {};
+
+        finalFilteredRecords!.forEach((record) => {
+            const sector = record.sector;
+
+            if(!countBySector[sector]){
+                countBySector[sector] = 1;
+            }
+            else{
+                countBySector[sector]++;
+            }
+        });
+
+        const orderedRecords = Object.entries(countBySector)
+            .map(([sector, total]) => ({ sector, total }))
+            .sort((a: any, b: any) => ( b.total - a.total ));
+
+        const mostFiveMealSectors = orderedRecords.slice(0, 5);
+
+        return mostFiveMealSectors;
     }
 
     sendRecord = async (range: string, values: CreateRecordDTO[]): Promise<void> => {

@@ -3,7 +3,7 @@ import { TimeRecord } from "../types/records";
 import { mapSheet, mapSheetRowToRecord } from "./mappers";
 import { validateSheetData } from "./validators";
 
-export async function verifyAndSerializeRecordsCache(
+export async function verifyAndUpdateRecordsCache(
     recordsCache: TimeRecord[] | undefined,
     sheets: any,
     spreadSheetId: any,
