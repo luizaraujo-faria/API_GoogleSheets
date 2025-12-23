@@ -69,7 +69,7 @@ class CollaboratorController {
             );
 
             return res.status(200).json(GoogleSheetsResponse.successMessage(
-                'Colaboradore listados por setor com sucesso!',
+                'Colaboradores listados por setor com sucesso!',
                 collaborators
             ))
         }
@@ -81,7 +81,6 @@ class CollaboratorController {
     createCollaborator = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
 
         try{
-            
             const { values } = req.body;
 
             await this.collaboratorService.createCollaborator(
