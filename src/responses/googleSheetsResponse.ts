@@ -44,19 +44,19 @@ class GoogleSheetsResponse<T> implements IResponse{
         return this;
     }
 
-    // Métodos Estáticos
-
+    // MENSAGEM DE SUCESSO
     public static successMessage<T>(message: string, data: T): GoogleSheetsResponse<T>{
         return new GoogleSheetsResponse<T>(true, message, data);
     }
 
+    // MENSAGEM DE ERRO
     public static errorMessage<T>(message: string, error?: string): GoogleSheetsResponse<T>{
         const errorResponse = new GoogleSheetsResponse<T>(false, message, null);
         if(error) errorResponse.setError(error);
         return errorResponse;
     }
 
-    // Converte para objeto simples
+    // CONVERTE PARA OBJETO SIMPLES
     public toJSON(): object {
         return {
             success: this.success,

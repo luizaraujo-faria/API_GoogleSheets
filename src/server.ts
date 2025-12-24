@@ -9,17 +9,17 @@ import { ZodError } from 'zod';
 config({ path: resolve(process.cwd(), '.env') });
 
 // Criar __dirname para ES Modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// const __filename = fileURLToPath(import.meta.url);
+// const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middlewares
-app.use(cors());
-app.use(express.json());
+// MIDDLEWARES
+app.use(cors()); // LIBERA ACESSO A API
+app.use(express.json()); // FORMATA DADOS RECEBIDOS PARA JSON
 
-// Rotas
+// ROTAS DINAMICAS
 routes.forEach(({ prefix, router }) =>{
     app.use(`/api${prefix}`, router);
 });
@@ -30,13 +30,13 @@ function printRoutes(stack: any[], prefix: string = ''){
     stack.forEach((middleware) => {
     
         if(middleware.route) {
-            // Rota direta
+            // ROTA DIRETA
             const methods = Object.keys(middleware.route.methods).join(', ').toUpperCase();
             const path = prefix + middleware.route.path;
             console.log(`📍 ${methods} ${path}`);
         }
         else if(middleware.name === 'router' && middleware.handle.stack){
-            // Router com prefixo
+            // ROUTER COM PREFIXO
             const newPrefix = prefix + (middleware.regexp.toString() !== '/^\\/?$/i' 
                 ? middleware.regexp.toString().replace(/^\/\^\\\//, '').replace(/\\\/\?\/i$/, '')
                 : '');
@@ -51,7 +51,7 @@ console.log('=== ROTAS COMPLETAS ===');
 printRoutes(app._router.stack);
 console.log('=== FIM DAS ROTAS ===');
 
-// Logging para desenvolvimento
+// LOGGING PARA DESENVOLVIMENTO
 app.use((req: Request, res: Response, next: NextFunction) => {
     console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
     next();
@@ -72,19 +72,19 @@ app.get('/', (req: Request, res: Response) => {
     res.json({
         message: 'API Google Sheets funcionando!',
         endpoints: {
-        health: 'GET /health',
-        read_data: 'GET /api/sheets/read',
-        write_data: 'POST /api/sheets/write',
-        update_data: 'PUT /api/sheets/update'
+            health: 'GET /health',
+            read_data: 'GET /api/sheets/read',
+            write_data: 'POST /api/sheets/write',
+            update_data: 'PUT /api/sheets/update'
         },
         status: 'online'
     });
 });
 
-// Error handling
+// ERROR HANDLING
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     
-    // Erros do Zod
+    // CAPTURA ERROS DE VALIDAÇÃO DO ZOD
     if(err instanceof ZodError){
         const formatted = err.issues.map(issue => ({
             field: issue.path.join('.'),
@@ -100,6 +100,7 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 
     console.error('Erro:', err.stack || err);
 
+    // CAPTURA ERROS DO SERVIDOR
     return res.status(err.httpStatus || 500).json({
         sucess: false,
         error: 'Algo deu errado!',
@@ -107,22 +108,23 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     });
 });
 
-// 404 handler
+// 404 HANDLER PARA ROTAS
 app.use((req: Request, res: Response) => {
     res.status(404).json({ 
         error: 'Rota não encontrada',
         path: req.originalUrl,
         method: req.method,
         available_endpoints: [
-        'GET /',
-        'GET /health', 
-        'GET /api/sheets/read',
-        'POST /api/sheets/write',
-        'PUT /api/sheets/update'
+            'GET /',
+            'GET /health', 
+            'GET /api/sheets/read',
+            'POST /api/sheets/write',
+            'PUT /api/sheets/update'
         ]
     });
 });
 
+// SERVIDOR EXECUTANDO
 app.listen(PORT, () => {
     console.log(`Aplicação rodando na porta ${PORT}`);
 });

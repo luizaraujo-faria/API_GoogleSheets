@@ -4,7 +4,7 @@ import { isTimeInsideShift } from "./mappers";
 import { TimeRecord } from "../types/records";
 
 type Filters<T> = Partial<T>;
-
+// FILTRA OS DADOS DE ACORDO COM OS PARAMETROS DO TIPO GENÉRICO PASSADO
 export function searchInSheet<T>(params: {
     data: T[];
     filters: Filters<T>;
@@ -30,6 +30,7 @@ export function searchInSheet<T>(params: {
     );
 }
 
+// FILTRA PELO MES DO ANO ATUAL
 export function filterByMonthAndYear<T extends TimeRecord>(
     records: T[] | undefined,
     month: number,
@@ -48,6 +49,7 @@ export function filterByMonthAndYear<T extends TimeRecord>(
     });
 }
 
+// FILTRA PELO TURNO
 export function filterByTurn<T extends Record<string, any>>(
     records: T[],
     field: keyof T,

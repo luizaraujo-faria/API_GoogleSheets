@@ -3,7 +3,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import dotenv from 'dotenv';
 
-// Configurar dotenv
+// CONFIGURA .ENV
 dotenv.config();
 
 // Criar __dirname para ES Modules
@@ -26,11 +26,10 @@ class GoogleSheetsService {
 
     try {
 
-      // Caminho para o arquivo de credenciais
-      // const keyFilePath = join(__dirname, '../../credentials/api-imrea.json');
+      // CAMINHO PARA O ARQUIVO DE CREDENCIAIS
       console.log('Procurando credenciais em:', credentials);
 
-      
+      // AUTENTICA AS CREDENCIAIS DO GOOGLESHEETS API
       this.auth = new google.auth.GoogleAuth({
         credentials,
         scopes: ['https://www.googleapis.com/auth/spreadsheets'],
@@ -38,8 +37,6 @@ class GoogleSheetsService {
       
       this.sheets = google.sheets({ version: 'v4', auth: this.auth });
       this.SPREADSHEET_ID = process.env.SPREADSHEET_ID;
-
-      // console.log(`Propriedade recebidas: SHEET=${this.getSheetsApi}, SPREADSHEETID=${this.getSpreadsheetId}`);
       
       console.log('Google Sheets API configurada com sucesso!');
     } 

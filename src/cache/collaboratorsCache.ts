@@ -27,7 +27,7 @@ class CollaboratorCache {
 
         this.store.set(range, {
             data,
-            expiresAt: Date.now() + this.TTL * 10000 // 10 minutos
+            expiresAt: Date.now() + this.TTL * 1000 // 1 minuto
         });
     }
 

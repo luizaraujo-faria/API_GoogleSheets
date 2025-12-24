@@ -4,6 +4,7 @@ import { Turns, TurnsRange } from "../constants/turns";
 import { Collaborator } from "../types/collaborator";
 dayjs.extend(customParseFormat);
 
+// MAPEIA PARA O TIPO DA PLANILHA DE ENTRADA E SAIDA
 export function mapSheetRowToRecord(row: Record<string, any>) {
 
     return {
@@ -17,6 +18,7 @@ export function mapSheetRowToRecord(row: Record<string, any>) {
     };
 }
 
+// MAPEIA PARA O TIPO DA PLANILHA COLABORADORES
 export function mapSheetRowToCollaborator(row: Collaborator | any) {
 
     return {
@@ -27,6 +29,7 @@ export function mapSheetRowToCollaborator(row: Collaborator | any) {
     };
 }
 
+// MAPEIA OS DADOS CRUS PARA ARRAY DE OBJETOS LIMPO
 export function mapSheet<T>(values: any[][]): T[] {
 
     if (!values || values.length === 0) return [];
@@ -45,6 +48,7 @@ export function mapSheet<T>(values: any[][]): T[] {
     });
 }
 
+// MAPEIA PELO LIMITE DE TEMPO
 export function isTimeInsideShift(time: string, turn: Turns): boolean {
     const range = TurnsRange[turn];
 
