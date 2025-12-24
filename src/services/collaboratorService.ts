@@ -1,4 +1,3 @@
-import { lowercase, toLowerCase } from "zod/v4";
 import { collaboratorCache } from "../cache/collaboratorsCache";
 import googleSheetsService from "../config/googleSheets";
 import ApiException from "../errors/ApiException";
@@ -47,19 +46,17 @@ class CollaboratorService {
 
     getById = async (range: string, collaboratorId: string | number): Promise<Collaborator> => {
 
-        console.log(`ID RECEBIDO CRU: ${collaboratorId}`)
-
+        // VALIDA O ID RECEBIDO
         const serializedId: number | string = collaboratorTypeSchema.collaboratorId.parse(collaboratorId);
-
-        console.log(`ID RECEBIDO SERIALIZADO: ${collaboratorId}`)
-
         const collaborators: Collaborator[] = await this.loadCollaborators(range);
 
+        // FILTRA PELO ID
         const filteredById = searchInSheet<Collaborator>({
             data: collaborators,
             filters: { collaboratorId: serializedId }
         });
 
+        // VERIFICA SE EXISTE COM O ID
         if(!filteredById || filteredById.length === 0)
             throw new ApiException('Nenhum colaborador encontrado com este ID!', 404);
 
@@ -68,15 +65,17 @@ class CollaboratorService {
 
     listBySector = async (range: string, sector: string): Promise<Collaborator[]> => {
 
+        // VALIDA O SETOR RECEBIDO
         const serializedSector: string = collaboratorTypeSchema.sector.parse(sector);
-
         const collaborators: Collaborator[] = await this.loadCollaborators(range);
 
+        // FILTRA PELO SETOR
         const filteredColaborators = searchInSheet<Collaborator>({
             data: collaborators,
             filters: { sector: serializedSector }
         });
 
+        // VERIFICA SE EXISTE PELO SETOR
         if(!filteredColaborators || filteredColaborators.length === 0)
             throw new ApiException('Nenhum colaborador encontrado com este setor!', 404);
 
@@ -85,35 +84,37 @@ class CollaboratorService {
 
     createCollaborator = async (range: string, values: any[]): Promise<void> => {
 
+        // PEGA OS VALORES DO ARRAY E PASSA PARA OBJETO
         const [ collaboratorId, name, sector, type ] = values;
-        const collaboratorRole = String(type)
-
         const dataToObject: Collaborator = {
             collaboratorId,
             name,
             sector,
-            type: collaboratorRole.toLowerCase()
+            type: String(type).toLowerCase()
         }
 
+        // VALIDA OS DADOS RECEBIDOS
         const serializedData: CreateCollaboratorDTO = collaboratorType.parse(dataToObject);
 
+        // BUSCA NO CACHE OU NA PLANILHA E VERIFICA SE JÁ NÃO HÁ UM CADASTRADO PELO ID
         const collaborators = await this.loadCollaborators(range);
-
         const exisitngCollaborator = searchInSheet<Collaborator>({
             data: collaborators,
-            filters: { collaboratorId }
+            filters: { collaboratorId: String(dataToObject.collaboratorId) }
         });
 
         if(exisitngCollaborator[0])
             throw new ApiException('Colaborador já cadastrado na planilha com este ID!', 400);
 
+        // PASSA OS DADOS PARA MATRIZ (FORMATO ESPERADO PELO GOOGLESHEETSAPI)
         const dataToMatrix = [[
             serializedData.collaboratorId,
             serializedData.name,
             serializedData.sector,
-            collaboratorRole
+            serializedData.type
         ]];
 
+        // ENVIA PARA O GOOGLESHEETS
         await this.sheets.spreadsheets.values.append({
             spreadsheetId: this.spreadSheetId,
             range,
@@ -123,6 +124,7 @@ class CollaboratorService {
             }
         });
 
+        // INVALIDA CACHE
         collaboratorCache.clear();
     }
 }

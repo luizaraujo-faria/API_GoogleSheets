@@ -1,5 +1,6 @@
 import z from 'zod';
 
+// SCHEMA DE VALIDAÇÃO DO TIPO COLLABORATOR
 export const collaboratorTypeSchema = {
     collaboratorId: z.union([
         z.number({
@@ -32,9 +33,25 @@ export const collaboratorTypeSchema = {
         .nonempty(),
     
     type: z.enum(['residente', 'visitante', 'terceirizado', 'colaborador'], {
-        required_error: 'Tipo de colaborador é obrigatório!',
-        invalid_type_error: 'Tipo de colaborador inválido!'
+        errorMap: (issue, ctx) => {
+
+            if(issue.code === 'invalid_type' && issue.received === 'undefined'){
+                return { message: 'Tipo de colaborador é obrigatório' };
+            }
+            
+            switch (issue.code) {
+            case 'invalid_enum_value':
+                return { message: 'Tipo de colaborador inválido' };
+
+            case 'invalid_type':
+                return { message: 'Tipo de colaborador deve ser uma string' };
+
+            default:
+                return { message: ctx.defaultError };
+            }
+        }
     })
+    
 };
 
 export const collaboratorType = z.object(collaboratorTypeSchema);

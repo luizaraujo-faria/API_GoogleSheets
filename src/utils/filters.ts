@@ -7,7 +7,7 @@ type Filters<T> = Partial<T>;
 
 export function searchInSheet<T>(params: {
     data: T[];
-    filters?: Filters<T>;
+    filters: Filters<T>;
 }): T[] {
 
     const { data, filters } = params;

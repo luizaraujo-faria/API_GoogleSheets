@@ -6,7 +6,7 @@ import { Collaborator } from "../types/collaborator";
 class CollaboratorController {
 
     public readonly range: string = 'Página1!A:Z';
-    public readonly sheetName: string = 'Colaboradores';
+    public readonly sheetName: string = 'Colaboradores!A:D';
     private readonly collaboratorService: CollaboratorService;
 
     constructor(collaboratorService: CollaboratorService){
