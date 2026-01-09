@@ -32,6 +32,26 @@ export const recordTypeFields = {
         .min(2, 'Deve conter no mínimo duas letras!')
         .nonempty(),
 
+    type: z.enum(['residente', 'visitante', 'terceirizado', 'colaborador'], {
+        errorMap: (issue, ctx) => {
+
+            if(issue.code === 'invalid_type' && issue.received === 'undefined'){
+                return { message: 'Tipo de colaborador é obrigatório' };
+            }
+            
+            switch (issue.code) {
+            case 'invalid_enum_value':
+                return { message: 'Tipo de colaborador inválido' };
+
+            case 'invalid_type':
+                return { message: 'Tipo de colaborador deve ser uma string' };
+
+            default:
+                return { message: ctx.defaultError };
+            }
+        }
+    }),
+
     day: z.string({
         required_error: "Dia é obrigatório",
         invalid_type_error: "Formato de data inválido, use DD-MM-YY"
@@ -102,6 +122,7 @@ export interface TimeRecord {
     collaboratorId: number | string;
     name: string;
     sector: string;
+    type: string;
     day: Date | string;
     entry: Date;
     exit: Date;
@@ -116,6 +137,7 @@ export interface RecordsFilter {
     collaboratorId?: number;
     name?: string;
     sector?: string;
+    type?: string;
     day?: Date;
     entry?: Date;
     exit?: Date;
@@ -131,6 +153,11 @@ export interface MealCountByCollaborator {
     collaborator: string;
     sector: string;
     total: number;
+}
+
+export interface MealCountByCollaboratorType {
+    type: string;
+    total: number | unknown;
 }
 
 export type MealCountMap = Record<string, MealCountByCollaborator>;

@@ -3,7 +3,7 @@ import googleSheetsService from "../config/googleSheets";
 import { mapSheet, mapSheetRowToRecord } from "../utils/mappers";
 import { filterByMonthAndYear, filterByTurn, searchInSheet } from "../utils/filters";
 import { normalizeDay, validateSheetData } from "../utils/validators";
-import { collaboratorIdSchema, MealCountByCollaborator, MealCountBySector, MealCountMap, recordTypeFields, TimeRecord } from "../types/records";
+import { collaboratorIdSchema, MealCountByCollaborator, MealCountByCollaboratorType, MealCountBySector, MealCountMap, recordTypeFields, TimeRecord } from "../types/records";
 import dayjs from "dayjs";
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
@@ -235,7 +235,7 @@ class RecordsService {
             : monthlyRecords;
     
         if(!finalFilteredRecords || finalFilteredRecords.length === 0)
-            throw new ApiException('Nenhum registro encontrado para este setor neste mês e ou turno!', 404);
+            throw new ApiException('Nenhum registro encontrado para este mês e ou turno!', 404);
 
         const countBySector: any = {}; // ARMAZENA CONTAGEM POR SETOR
 
@@ -291,7 +291,7 @@ class RecordsService {
             : monthlyRecords;
     
         if(!finalFilteredRecords || finalFilteredRecords.length === 0)
-            throw new ApiException('Nenhum registro encontrado para este setor neste mês e ou turno!', 404);
+            throw new ApiException('Nenhum registro encontrado para este mês e ou turno!', 404);
 
         const countBySector: any = {}; // ARMAZENA CONTAGEM POR SETOR
 
@@ -314,6 +314,7 @@ class RecordsService {
         return orderedRecords;
     }
 
+    // QUANTIDADE DE VEZES QUE CADA COLABORADOR COMEU NO MÊS
     listMealCountOfAllCollaboratorsByMonth = async (
         range: string,
         month: string,
@@ -344,7 +345,7 @@ class RecordsService {
             : monthlyRecords;
     
         if(!finalFilteredRecords || finalFilteredRecords.length === 0)
-            throw new ApiException('Nenhum registro encontrado para este setor neste mês e ou turno!', 404);
+            throw new ApiException('Nenhum registro encontrado para este mês e ou turno!', 404);
 
         const countByCollaborator: MealCountMap = {}; // ARMAZENA CONTAGEM POR SETOR
 
@@ -368,6 +369,60 @@ class RecordsService {
 
         // ORDENA OS SETORES EM ORDEM DECRESCENTE
         const orderedRecords: MealCountByCollaborator[] = Object.values(countByCollaborator)
+            .sort((a: any, b: any) => ( b.total - a.total ));
+
+        return orderedRecords;
+    };
+
+    // QUANTIDADE DE VEZES QUE CADA TIPO DE COLABORADOR COMEU NO MÊS
+    listMealCountOfAllCollaboratorTypeByMonth = async (
+        range: string,
+        month: string,
+        turn?: string,
+    ): Promise<MealCountByCollaboratorType[]> => {
+        
+        let serializedTurn: Turns | undefined = undefined; // TURNO É OPCIONAL
+        const currentYear = dayjs().year();
+        const targetMonth = Number(month);
+
+        if(isNaN(targetMonth) || targetMonth < 1 || targetMonth > 12)
+            throw new ApiException('Mês informado é inválido!', 400);
+
+        if(turn) serializedTurn = turnsTypeSchema.parse(turn?.toLowerCase()) as Turns; // VALIDA TURNO
+
+        const records = await this.loadRecords(range);
+
+        // FILTRA PELO MES
+        const monthlyRecords = filterByMonthAndYear(
+            records,
+            targetMonth,
+            currentYear
+        );
+
+        // SE O TURNO FOR INFORMADO, FILTRA POR ELE, SENÃO SEGUE SOMENTE COM FILTROS PELO MES
+        const finalFilteredRecords: TimeRecord[] | undefined = turn ? 
+            filterByTurn<TimeRecord>(monthlyRecords!, 'entry', serializedTurn!) 
+            : monthlyRecords;
+    
+        if(!finalFilteredRecords || finalFilteredRecords.length === 0)
+            throw new ApiException('Nenhum registro encontrado para este mês e ou turno!', 404);
+
+        const countByCollaborator: any = {}; // ARMAZENA CONTAGEM POR SETOR
+
+        finalFilteredRecords!.forEach((record) => {
+            const type = record.type;
+
+            if(!countByCollaborator[type]){ 
+                countByCollaborator[type] = 1; 
+            }
+            else{
+                countByCollaborator[type]++; // SE ENCONTRAR ALGUM REGISTRO DAQUELE SETOR, ADICIONA MAIS 1
+            }
+        });
+
+        // ORDENA OS SETORES EM ORDEM DECRESCENTE
+        const orderedRecords: MealCountByCollaboratorType[] = Object.entries(countByCollaborator)
+            .map(([type, total]) => ({ type, total }))
             .sort((a: any, b: any) => ( b.total - a.total ));
 
         return orderedRecords;
