@@ -2,8 +2,8 @@ import ApiException from "../errors/ApiException";
 import googleSheetsService from "../config/googleSheets";
 import { mapSheet, mapSheetRowToRecord } from "../utils/mappers";
 import { filterByMonthAndYear, filterByTurn, searchInSheet } from "../utils/filters";
-import { validateSheetData } from "../utils/validators";
-import { collaboratorIdSchema, recordTypeFields, TimeRecord } from "../types/records";
+import { normalizeDay, validateSheetData } from "../utils/validators";
+import { collaboratorIdSchema, MealCountByCollaborator, MealCountBySector, MealCountMap, recordTypeFields, TimeRecord } from "../types/records";
 import dayjs from "dayjs";
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
@@ -204,12 +204,12 @@ class RecordsService {
         return mealCount;
     }
 
-    // LISTA OS SETORES QUE MAIS COMERAM NO MES
+    // LISTA OS 5 SETORES QUE MAIS COMERAM NO MES
     listMostMealCountSectorsByMonth = async (
         range: string,
         month: string,
         turn?: string
-    ): Promise<any[]> => {
+    ): Promise<MealCountBySector[]> => {
 
         let serializedTurn: Turns | undefined = undefined; // TURNO É OPCIONAL
         const currentYear = dayjs().year();
@@ -230,11 +230,12 @@ class RecordsService {
         );
 
         // SE O TURNO FOR INFORMADO, FILTRA POR ELE, SENÃO SEGUE SOMENTE COM FILTROS PELO MES
-        const filteredRecordsByTurn: TimeRecord[] | undefined = turn ? 
+        const finalFilteredRecords: TimeRecord[] | undefined = turn ? 
             filterByTurn<TimeRecord>(monthlyRecords!, 'entry', serializedTurn!) 
             : monthlyRecords;
-
-        const finalFilteredRecords = turn ? filteredRecordsByTurn : monthlyRecords;
+    
+        if(!finalFilteredRecords || finalFilteredRecords.length === 0)
+            throw new ApiException('Nenhum registro encontrado para este setor neste mês e ou turno!', 404);
 
         const countBySector: any = {}; // ARMAZENA CONTAGEM POR SETOR
 
@@ -264,7 +265,7 @@ class RecordsService {
         range: string,
         month: string,
         turn?: string
-    ): Promise<any[]> => {
+    ): Promise<MealCountBySector[]> => {
 
         let serializedTurn: Turns | undefined = undefined; // TURNO É OPCIONAL
         const currentYear = dayjs().year();
@@ -285,11 +286,12 @@ class RecordsService {
         );
 
         // SE O TURNO FOR INFORMADO, FILTRA POR ELE, SENÃO SEGUE SOMENTE COM FILTROS PELO MES
-        const filteredRecordsByTurn: TimeRecord[] | undefined = turn ? 
+        const finalFilteredRecords: TimeRecord[] | undefined = turn ? 
             filterByTurn<TimeRecord>(monthlyRecords!, 'entry', serializedTurn!) 
             : monthlyRecords;
-
-        const finalFilteredRecords = turn ? filteredRecordsByTurn : monthlyRecords;
+    
+        if(!finalFilteredRecords || finalFilteredRecords.length === 0)
+            throw new ApiException('Nenhum registro encontrado para este setor neste mês e ou turno!', 404);
 
         const countBySector: any = {}; // ARMAZENA CONTAGEM POR SETOR
 
@@ -312,29 +314,85 @@ class RecordsService {
         return orderedRecords;
     }
 
-    // ENVIA DADOS / CRIA REGISTROS NA PLANILHA
-    sendRecord = async (range: string, values: Array<[number | string]>): Promise<void> => {
+    listMealCountOfAllCollaboratorsByMonth = async (
+        range: string,
+        month: string,
+        turn?: string,
+    ): Promise<MealCountByCollaborator[]> => {
+        
+        let serializedTurn: Turns | undefined = undefined; // TURNO É OPCIONAL
+        const currentYear = dayjs().year();
+        const targetMonth = Number(month);
 
-        // NORMALIZA OS DADDOS RECEBIDOS PARA ARRAY
+        if(isNaN(targetMonth) || targetMonth < 1 || targetMonth > 12)
+            throw new ApiException('Mês informado é inválido!', 400);
+
+        if(turn) serializedTurn = turnsTypeSchema.parse(turn?.toLowerCase()) as Turns; // VALIDA TURNO
+
+        const records = await this.loadRecords(range);
+
+        // FILTRA PELO MES
+        const monthlyRecords = filterByMonthAndYear(
+            records,
+            targetMonth,
+            currentYear
+        );
+
+        // SE O TURNO FOR INFORMADO, FILTRA POR ELE, SENÃO SEGUE SOMENTE COM FILTROS PELO MES
+        const finalFilteredRecords: TimeRecord[] | undefined = turn ? 
+            filterByTurn<TimeRecord>(monthlyRecords!, 'entry', serializedTurn!) 
+            : monthlyRecords;
+    
+        if(!finalFilteredRecords || finalFilteredRecords.length === 0)
+            throw new ApiException('Nenhum registro encontrado para este setor neste mês e ou turno!', 404);
+
+        const countByCollaborator: MealCountMap = {}; // ARMAZENA CONTAGEM POR SETOR
+
+        finalFilteredRecords!.forEach((record) => {
+            const collaborator = record.name;
+            const sector = record.sector;
+
+            const key: string = `${collaborator}|${sector}`;
+
+            if(!countByCollaborator[key]){ 
+                countByCollaborator[key] = {
+                    collaborator,
+                    sector,
+                    total: 1,
+                }; 
+            }
+            else{
+                countByCollaborator[key].total++; // SE ENCONTRAR ALGUM REGISTRO DAQUELE SETOR, ADICIONA MAIS 1
+            }
+        });
+
+        // ORDENA OS SETORES EM ORDEM DECRESCENTE
+        const orderedRecords: MealCountByCollaborator[] = Object.values(countByCollaborator)
+            .sort((a: any, b: any) => ( b.total - a.total ));
+
+        return orderedRecords;
+    };
+
+    // ENVIA DADOS / CRIA REGISTROS NA PLANILHA
+    sendRecord = async (
+        range: string,
+        values: Array<[number | string]>
+    ): Promise<void> => {
+
         const records = Array.isArray(values) ? values : [values];
 
-        // RANGE DE ENVIOS ATUAL (LIMITA PAR NÃO BUSCAR MAIS QUE O NECESSÁRIO)
         const actualRange =
-            range && range.includes("!") ? range : `${range || "EntradaSaida"}!A:F`;
+            range && range.includes("!") ? range : `${range || "EntradaSaida"}!A:G`;
 
-        const sheetName = actualRange.includes("!")
-            ? actualRange.split("!")[0]
-            : actualRange;
+        const sheetName = actualRange.split("!")[0];
 
-        // LEITURA ÚNICA NA PLANILHA
         const readResponse = await this.sheets.spreadsheets.values.get({
             spreadsheetId: this.spreadSheetId,
-            range: `${sheetName}!A:F`,
+            range: `${sheetName}!A:G`,
         });
 
         const rows = readResponse.data?.values || [];
 
-        // DETECTA HEADER
         const hasHeader =
             rows.length > 0 &&
             rows[0].some(
@@ -344,46 +402,53 @@ class RecordsService {
 
         const dataStartIndex = hasHeader ? 1 : 0;
 
-        // INDICES FIXOS
+        // COLUNAS
         const idxColab = 0;
-        const idxDay = 3;
-        const idxEntry = 4;
-        const idxExit = 5;
+        const idxDay = 4;
+        const idxEntry = 5;
+        const idxExit = 6;
 
-        const today = dayjs().format("DD/MM/YY");
+        const now = dayjs().tz("America/Sao_Paulo");
+        const todayFormatted = now.format("DD/MM/YY");
+        const nowTime = now.format("HH:mm");
 
-        // VARIAVEIS PARA GUARDAR O QUE SERÁ ESCRITO
         const updatesToApply: { range: string; values: any[][] }[] = [];
         const rowsToAppend: any[][] = [];
 
-        // PRÉ-INDEXAÇÃO (VARRE A PLANILHA UMA UNÍCA VEZ)
+        /**
+         * INDEXA ÚLTIMO REGISTRO ABERTO
+         * key = ID
+         * value = rowIndex
+         */
         const openEntryIndex = new Map<string, number>();
 
         for (let i = rows.length - 1; i >= dataStartIndex; i--) {
             const row = rows[i] || [];
 
             const colab = row[idxColab]?.toString().trim();
-            const rawDay = row[idxDay]?.toString().trim();
-            const entry = row[idxEntry]?.toString().trim();
+            const rawDay = row[idxDay];
             const exit = row[idxExit]?.toString().trim();
 
-            if (!colab || !rawDay || !entry) continue;
+            if (!colab || !rawDay) continue;
 
-            const normalizedDay = dayjs(rawDay, [
-                "DD/MM/YY",
-                "DD/MM/YYYY",
-                "YYYY-MM-DD",
-            ]).format("DD/MM/YY");
+            const day = normalizeDay(rawDay);
 
-            const exitIsEmpty =
-                !exit || exit === "xx:xx" || exit === "XX:XX" || exit === "N/A";
+            console.log({
+                rawDay,
+                normalized: normalizeDay(rawDay)?.format("YYYY-MM-DD"),
+                isToday: normalizeDay(rawDay)?.isSame(now, "day")
+            });
+            if (!day) continue;
 
-            if (exitIsEmpty) {
-                openEntryIndex.set(`${colab}_${normalizedDay}`, i);
+            const isToday = day.isSame(now, "day");
+            const exitIsEmpty = !exit || exit === "";
+
+            if (isToday && exitIsEmpty) {
+                openEntryIndex.set(colab, i);
             }
         }
 
-        // CONVERTE INDICE DE SAÍDA DA COLUNA PARA LETRA
+        // CONVERTE ÍNDICE DA COLUNA DE SAÍDA PARA LETRA
         const exitColumnLetter = (() => {
             let n = idxExit;
             let s = "";
@@ -394,44 +459,40 @@ class RecordsService {
             return s;
         })();
 
-        // PROCESSAMENTO DOS REGISTROS
-        for(const record of records) {
+        // PROCESSA CADA ID RECEBIDO
+        for (const record of records) {
 
-            const rawColabId = record[0];
+            const serializedId = collaboratorIdSchema.parse(
+                String(record[0]).trim()
+            );
 
-            // VALIDA CADA ID RECEBIDO
-            const serializedId = collaboratorIdSchema.parse(String(rawColabId).trim());
-            const key = `${serializedId}_${today}`;
+            const foundRowIndex = openEntryIndex.get(String(serializedId));
 
-            const foundRowIndex = openEntryIndex.get(key);
-
-            // ATUALIZA SAÍDA
-            if(foundRowIndex !== undefined) {
+            // 🟢 FECHA SAÍDA
+            if (foundRowIndex !== undefined) {
                 const spreadsheetRow = foundRowIndex + 1;
-                const nowTime = dayjs()
-                    .tz("America/Sao_Paulo")
-                    .format("HH:mm");
 
                 updatesToApply.push({
                     range: `${sheetName}!${exitColumnLetter}${spreadsheetRow}`,
                     values: [[nowTime]],
                 });
 
-                // EVITA REUTILIZAR A MESMA SAIDA
-                openEntryIndex.delete(key);
+                openEntryIndex.delete(String(serializedId));
                 continue;
             }
 
-            // CRIA NOVA LINHA (ENTRADA)
+            // 🔵 CRIA NOVA ENTRADA
             const newRow: any[] = [];
             newRow[idxColab] = serializedId;
+            newRow[idxDay] = todayFormatted;
+            newRow[idxEntry] = nowTime;
+            newRow[idxExit] = "";
 
             rowsToAppend.push(newRow);
         }
-        
-        // EXECUTA UPDATES EM LOTE (SAÍDA)
-        if(updatesToApply.length > 0){
 
+        // APLICA SAÍDAS
+        if (updatesToApply.length > 0) {
             await this.sheets.spreadsheets.values.batchUpdate({
                 spreadsheetId: this.spreadSheetId,
                 requestBody: {
@@ -441,9 +502,9 @@ class RecordsService {
             });
         }
 
-        // ENVIO ÚNICO (NOVOS REGISTROS)
-        if(rowsToAppend.length > 0){
-
+        // CRIA NOVAS ENTRADAS
+        if (rowsToAppend.length > 0) {
+            console.log(rowsToAppend);
             await this.sheets.spreadsheets.values.append({
                 spreadsheetId: this.spreadSheetId,
                 range: `${sheetName}!A:G`,
@@ -454,10 +515,7 @@ class RecordsService {
             });
         }
 
-        // INVALIDA CACHE
         recordsCache.clear();
-
-        return;
     };
 }
 

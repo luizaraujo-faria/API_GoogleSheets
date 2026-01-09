@@ -243,6 +243,37 @@ class RecordsController{
         }
     }
 
+    listMealCountOfAllCollaboratorsByMonth = async (
+        req: Request, 
+        res: Response, 
+        next: NextFunction
+    ): Promise<Response | void> => {
+
+        try{
+            const { month } = req.params;
+            const { turn } = req.query;
+
+            const mostMealCollaborators: any[] = await this.recordsService.listMealCountOfAllCollaboratorsByMonth(
+                this.sheetName,
+                month as string,
+                turn as string
+            );
+
+            const responseMessage = 
+                turn ?
+                `Quantidade de vezes que cada colaborador comeu durante o mês (${month}) no turno (${turn}) carregados!`
+                : `Quantidade de vezes que cada colaborador comeu durante o mês (${month}) carregados!`;
+
+            return res.status(200).json(GoogleSheetsResponse.successMessage(
+                responseMessage,
+                mostMealCollaborators
+            ));
+        }
+        catch(err: any){
+            next(err);
+        }
+    }
+
     sendRecord = async (
         req: Request, 
         res: Response, 

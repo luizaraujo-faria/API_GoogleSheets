@@ -11,6 +11,7 @@ export function mapSheetRowToRecord(row: Record<string, any>) {
         collaboratorId: row["Colaborador_ID"] ?? "",
         name: row["Nome"] ?? "",
         sector: row["Setor"] ?? "",
+        type: row["Tipo"] ?? "",
         day: row["Dia"] ?? "",
         entry: row["Entrada"] ?? "",
         exit: row["Saida"] ?? "",

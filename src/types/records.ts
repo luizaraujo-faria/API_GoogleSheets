@@ -121,3 +121,16 @@ export interface RecordsFilter {
     exit?: Date;
     id?: number;
 }
+
+export interface MealCountBySector {
+    sector: string;
+    total: number | unknown;
+}
+
+export interface MealCountByCollaborator {
+    collaborator: string;
+    sector: string;
+    total: number;
+}
+
+export type MealCountMap = Record<string, MealCountByCollaborator>;

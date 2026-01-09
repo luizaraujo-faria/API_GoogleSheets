@@ -1,3 +1,5 @@
+import dayjs from "dayjs";
+
 // VALIDA OS DADOS CRUS BUSCADOS
 export function validateSheetData<T extends object>(
     data: T[],
@@ -20,3 +22,16 @@ export function validateSheetData<T extends object>(
 
     return { valid: true, data };
 }
+
+export const normalizeDay = (value: any): dayjs.Dayjs | null => {
+    const parsed = dayjs(value, [
+        "DD/MM/YY",
+        "DD/MM/YYYY",
+        "D/M/YY",
+        "YYYY-MM-DD",
+        'M/D/YY',
+        'MM/DD/YY',
+    ], true);
+
+    return parsed.isValid() ? parsed : null;
+};
