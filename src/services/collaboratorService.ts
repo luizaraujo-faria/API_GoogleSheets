@@ -90,7 +90,7 @@ class CollaboratorService {
             collaboratorId,
             name,
             sector,
-            type: String(type).toLowerCase()
+            type: String(type)
         }
 
         // VALIDA OS DADOS RECEBIDOS

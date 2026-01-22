@@ -32,7 +32,7 @@ export const collaboratorTypeSchema = {
         .min(2, 'Deve conter no mínimo duas letras!')
         .nonempty(),
     
-    type: z.enum(['residente', 'visitante', 'terceirizado', 'colaborador'], {
+    type: z.enum(['Residente', 'Visitante', 'Terceirizado', 'Colaborador'], {
         errorMap: (issue, ctx) => {
 
             if(issue.code === 'invalid_type' && issue.received === 'undefined'){
