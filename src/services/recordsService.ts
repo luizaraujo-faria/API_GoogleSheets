@@ -2,8 +2,6 @@ import ApiException from "../errors/ApiException";
 import { mapSheet, mapSheetRowToRecord } from "../utils/mappers";
 import { filterByMonthAndYear, filterByTurn, searchInSheet } from "../utils/filters";
 import { normalizeDay, validateSheetData } from "../utils/validators";
-import { collaboratorIdSchema, MealCountByCollaborator, MealCountByCollaboratorType, MealCountBySector, MealCountMap, recordTypeFields, TimeRecord } from "../types/records";
-import dayjs from "dayjs";
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import customParseFormat from "dayjs/plugin/customParseFormat";
@@ -11,6 +9,10 @@ import { Turns, turnsTypeSchema } from "../constants/turns";
 import { recordsCache } from "../cache/recordsCache";
 import { GoogleSheetsRepository } from "../config/googleSheetsRepository";
 import { recordsRanges } from "../constants/SheetsRange";
+import dayjs from "dayjs";
+import { MealCountByCollaborator, MealCountByCollaboratorType, MealCountBySector, MealCountMap, RecordsFilter, TimeRecord } from "../types/records";
+import { collaboratorIdSchema } from "../schemas/commonSchema";
+import { recordsFilterSchema } from "../schemas/recordsSchema";
 
 dayjs.extend(customParseFormat);
 dayjs.extend(utc)
@@ -51,153 +53,7 @@ class RecordsService {
         return records;
     }
 
-    // LISTA REGISTROS PELO SETOR
-    async listBySector(sector: string): Promise<TimeRecord[]> {
 
-        const serializedSector = recordTypeFields.sector.parse(sector); // VALIDA O SETOR RECEBIDO
-        const records: TimeRecord[] = await this.loadRecords(this.sheetRange.bySector); // PEGA O CACHE OU DA PLANILHA
-
-        // FILTRA PELO SETOR
-        const filteredRecords: TimeRecord[] = searchInSheet<TimeRecord>({
-            data: records,
-            filters: { sector: serializedSector }
-        });
-
-        if(!filteredRecords || filteredRecords.length === 0)
-            throw new ApiException('Nenhum registro encontrado com este setor!', 404);
-
-        return filteredRecords;
-    }
-
-    // LISTA REGISTROS PELO DIA
-    listByDay = async (day: string): Promise<TimeRecord[]> => {
-
-        const serializedDay = recordTypeFields.day.parse(day); // VALIDA A DATA RECEBIDA
-
-        // FORMATA A DATA
-        const formattedDay: dayjs.Dayjs = dayjs(serializedDay, 'DD/MM/YY');
-        if(!formattedDay.isValid())
-            throw new ApiException('Data recebida é inválida!', 400);
-
-        const records: TimeRecord[] = await this.loadRecords(this.sheetRange.fullRange);
-
-        // FILTRA PELA DATA
-        const filteredRecords: TimeRecord[] = searchInSheet<TimeRecord>({
-            data: records,
-            filters: { day: formattedDay.format('DD/MM/YY') }
-        });
-
-        if(!filteredRecords || filteredRecords.length === 0)
-            throw new ApiException('Nenhum registro encontrado com este dia!', 404);
-
-        return filteredRecords;
-    }
-
-    // LISTA REGISTROS PELO TURNO DE ENTRADA
-    listEntryByTurn = async (turn: string): Promise<TimeRecord[]> => {
-
-        const serializedTurn: Turns = turnsTypeSchema.parse(turn.toLowerCase()) as Turns; // VALIDA O TURNO RECEBIDO
-        const records: TimeRecord[] = await this.loadRecords(this.sheetRange.fullRange);
-
-        // FILTRA PELA TURNO DE ENTRADA
-        const filteredRecords: TimeRecord[] = filterByTurn<TimeRecord>(
-            records,
-            'entry', serializedTurn
-        );
-
-        if(!filteredRecords || filteredRecords.length === 0)
-            throw new ApiException('Nenhum registro encontrado com entrada neste turno!', 404);
-
-        return filteredRecords;
-    }
-
-    // LISTA QUANTA VEZES UM COLABORADOR COMEU
-    listMealCountByColaboratorIdByMonth = async (
-        collaboratorId: string, 
-        month: string, 
-        turn?: string
-    ): Promise<number> => {
-
-        let serializedTurn: Turns | undefined = undefined; // TURNO É OPCIONAL
-        const currentYear = dayjs().year();
-        const targetMonth = Number(month);
-
-        if(isNaN(targetMonth) || targetMonth < 1 || targetMonth > 12)
-            throw new ApiException('Mês informado é inválido!', 400);
-
-        if(turn) serializedTurn = turnsTypeSchema.parse(turn?.toLowerCase()) as Turns; // VALIDA O TURNO SE EXISTIR
-
-        const records = await this.loadRecords(this.sheetRange.fullRange);
-
-        // FILTRA PELO ID DO COLABORADOR
-        const filteredRecordsByColaboratorId: TimeRecord[] = searchInSheet<TimeRecord>({
-            data: records,
-            filters: { collaboratorId }
-        });
-
-        // FILTRA PELO MES RECEBIDO
-        const monthlyRecords: TimeRecord[] | undefined = filterByMonthAndYear<TimeRecord>(
-            filteredRecordsByColaboratorId,
-            targetMonth,
-            currentYear,
-        );
-
-        // SE O TURNO FOR INFORMADO, FILTRA POR ELE, SENÃO SEGUE SOMENTE COM FILTROS PELO MES
-        const finalFilteredRecords: TimeRecord[] | undefined = turn ? 
-            filterByTurn<TimeRecord>(monthlyRecords!, 'entry', serializedTurn!) 
-            : monthlyRecords;
-    
-        if(!finalFilteredRecords || finalFilteredRecords.length === 0)
-            throw new ApiException('Nenhum registro encontrado para este colaborador neste mês e ou turno!', 404);
-
-        const mealCount: number = finalFilteredRecords.length;
-
-        return mealCount;
-    }
-
-    // LISTA QUANTIDADE DE VEZES QUE UM SETOR COMEU NO MES
-    listMealCountBySectorByMonth = async (
-        sector: string,
-        month: string,
-        turn?: string
-    ): Promise<number> => {
-
-        let serializedTurn: Turns | undefined = undefined; // TURNO É OPCIONAL
-        const currentYear = dayjs().year();
-        const targetMonth = Number(month);
-
-        if(isNaN(targetMonth) || targetMonth < 1 || targetMonth > 12)
-            throw new ApiException('Mês informado é inválido!', 400);
-
-        if(turn) serializedTurn = turnsTypeSchema.parse(turn?.toLowerCase()) as Turns; // VALIDA TURNO
-
-        const records = await this.loadRecords(this.sheetRange.fullRange);
-
-        // FILTRA PELO SETOR
-        const filteredRecordsBySector: TimeRecord[] = searchInSheet<TimeRecord>({
-            data: records,
-            filters: { sector }
-        });
-
-        // FILTRA PELO MES
-        const monthlyRecords: TimeRecord[] | undefined = filterByMonthAndYear<TimeRecord>(
-            filteredRecordsBySector,
-            targetMonth,
-            currentYear,
-        );
-
-        // SE O TURNO FOR INFORMADO, FILTRA POR ELE, SENÃO SEGUE SOMENTE COM FILTROS PELO MES
-        const finalFilteredRecords: TimeRecord[] | undefined = turn ? 
-            filterByTurn<TimeRecord>(monthlyRecords!, 'entry', serializedTurn!) 
-            : monthlyRecords;
-    
-        if(!finalFilteredRecords || finalFilteredRecords.length === 0)
-            throw new ApiException('Nenhum registro encontrado para este setor neste mês e ou turno!', 404);
-
-        const mealCount: number = finalFilteredRecords.length;
-
-        return mealCount;
-    }
 
     // LISTA OS 5 SETORES QUE MAIS COMERAM NO MES
     listMostMealCountSectorsByMonth = async (
@@ -252,6 +108,32 @@ class RecordsService {
         const mostFiveMealSectors = orderedRecords.slice(0, 5);
 
         return mostFiveMealSectors;
+    }
+
+    async getAllByFilters(rawFilters: RecordsFilter): Promise<TimeRecord[]> {
+
+        const filters = recordsFilterSchema.parse(rawFilters);
+        const records = await this.loadRecords(this.sheetRange.fullRange);
+
+        // const normalizedFilters = {
+        //     ...filters,
+        //     collaboratorId: filters.collaboratorId
+        //         ? Number(filters.collaboratorId)
+        //         : undefined,
+        //     recordId: filters.recordId
+        //         ? Number(filters.recordId)
+        //         : undefined,
+        // };
+
+        const filteredRecords = searchInSheet<TimeRecord>({
+            data: records,
+            filters: filters,
+        });
+
+        if(!filteredRecords || filteredRecords.length === 0)
+            throw new ApiException('Nenhum registro encontrado para os filtros informados!',404);
+
+        return filteredRecords;
     }
 
     // LISTA O QUANTO CADA SETOR COMEU
