@@ -8,7 +8,7 @@ type CacheEntry = {
 class CollaboratorCache {
 
     private store = new Map<string, CacheEntry>();
-    private TTL = 60; // 60 milissegundos
+    private TTL = 63; // 63 milissegundos
 
     get(range: string): Collaborator[] | null {
 
@@ -27,7 +27,7 @@ class CollaboratorCache {
 
         this.store.set(range, {
             data,
-            expiresAt: Date.now() + this.TTL * 1000 // 1 minuto
+            expiresAt: Date.now() + this.TTL * 1000 // 1: 30 minuto
         });
     }
 

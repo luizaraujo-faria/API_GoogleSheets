@@ -1,5 +1,4 @@
 import ApiException from "../errors/ApiException";
-import googleSheetsService from "../config/googleSheets";
 import { mapSheet, mapSheetRowToRecord } from "../utils/mappers";
 import { filterByMonthAndYear, filterByTurn, searchInSheet } from "../utils/filters";
 import { normalizeDay, validateSheetData } from "../utils/validators";
@@ -10,15 +9,16 @@ import timezone from 'dayjs/plugin/timezone';
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { Turns, turnsTypeSchema } from "../constants/turns";
 import { recordsCache } from "../cache/recordsCache";
+import { GoogleSheetsRepository } from "../config/googleSheetsRepository";
+import { recordsRanges } from "../constants/SheetsRange";
 
 dayjs.extend(customParseFormat);
 dayjs.extend(utc)
 dayjs.extend(timezone)
 
 class RecordsService {
-
-    private readonly sheets: any = googleSheetsService.getSheetsApi;
-    private readonly spreadSheetId: string | undefined = googleSheetsService.getSpreadsheetId;
+    private readonly sheetRange = recordsRanges;
+    constructor(private readonly googleSheetsRepository: GoogleSheetsRepository) {}
 
     // MÉTODO PARA CARREGAR E SALVAR OS DADOS EM CACHE
     private async loadRecords(range: string): Promise<TimeRecord[]> {
@@ -28,14 +28,11 @@ class RecordsService {
         if(cached) return cached; // SE EXISTIR O RETORNA
 
         // SENÃO, FAZ UMA NOVA BUSCA
-        const response = await this.sheets.spreadsheets.values.get({
-            spreadsheetId: this.spreadSheetId,
-            range,
-        });
+        const response = await this.googleSheetsRepository.getData(range);
 
         // SERIALIZA E FORMATA OS DADOS DA PLANILHA UMA VEZ SÓ
         const serializedRecords = validateSheetData<TimeRecord>(
-            mapSheet<TimeRecord>(response.data.values)
+            mapSheet<TimeRecord>(response)
         );
 
         if(!serializedRecords.valid)
@@ -48,17 +45,17 @@ class RecordsService {
     }
 
     // BUSCA TODOS
-    async getAll(range: string): Promise<TimeRecord[]> {
+    async getAll(): Promise<TimeRecord[]> {
 
-        const records: TimeRecord[] = await this.loadRecords(range);
+        const records: TimeRecord[] = await this.loadRecords(this.sheetRange.fullRange);
         return records;
     }
 
     // LISTA REGISTROS PELO SETOR
-    async listBySector(range: string, sector: string): Promise<TimeRecord[]> {
+    async listBySector(sector: string): Promise<TimeRecord[]> {
 
         const serializedSector = recordTypeFields.sector.parse(sector); // VALIDA O SETOR RECEBIDO
-        const records: TimeRecord[] = await this.loadRecords(range); // PEGA O CACHE OU DA PLANILHA
+        const records: TimeRecord[] = await this.loadRecords(this.sheetRange.bySector); // PEGA O CACHE OU DA PLANILHA
 
         // FILTRA PELO SETOR
         const filteredRecords: TimeRecord[] = searchInSheet<TimeRecord>({
@@ -73,7 +70,7 @@ class RecordsService {
     }
 
     // LISTA REGISTROS PELO DIA
-    listByDay = async (range: string, day: string): Promise<TimeRecord[]> => {
+    listByDay = async (day: string): Promise<TimeRecord[]> => {
 
         const serializedDay = recordTypeFields.day.parse(day); // VALIDA A DATA RECEBIDA
 
@@ -82,7 +79,7 @@ class RecordsService {
         if(!formattedDay.isValid())
             throw new ApiException('Data recebida é inválida!', 400);
 
-        const records: TimeRecord[] = await this.loadRecords(range);
+        const records: TimeRecord[] = await this.loadRecords(this.sheetRange.fullRange);
 
         // FILTRA PELA DATA
         const filteredRecords: TimeRecord[] = searchInSheet<TimeRecord>({
@@ -97,10 +94,10 @@ class RecordsService {
     }
 
     // LISTA REGISTROS PELO TURNO DE ENTRADA
-    listEntryByTurn = async (range: string, turn: string): Promise<TimeRecord[]> => {
+    listEntryByTurn = async (turn: string): Promise<TimeRecord[]> => {
 
         const serializedTurn: Turns = turnsTypeSchema.parse(turn.toLowerCase()) as Turns; // VALIDA O TURNO RECEBIDO
-        const records: TimeRecord[] = await this.loadRecords(range);
+        const records: TimeRecord[] = await this.loadRecords(this.sheetRange.fullRange);
 
         // FILTRA PELA TURNO DE ENTRADA
         const filteredRecords: TimeRecord[] = filterByTurn<TimeRecord>(
@@ -116,7 +113,6 @@ class RecordsService {
 
     // LISTA QUANTA VEZES UM COLABORADOR COMEU
     listMealCountByColaboratorIdByMonth = async (
-        range: string, 
         collaboratorId: string, 
         month: string, 
         turn?: string
@@ -131,7 +127,7 @@ class RecordsService {
 
         if(turn) serializedTurn = turnsTypeSchema.parse(turn?.toLowerCase()) as Turns; // VALIDA O TURNO SE EXISTIR
 
-        const records = await this.loadRecords(range);
+        const records = await this.loadRecords(this.sheetRange.fullRange);
 
         // FILTRA PELO ID DO COLABORADOR
         const filteredRecordsByColaboratorId: TimeRecord[] = searchInSheet<TimeRecord>({
@@ -161,7 +157,6 @@ class RecordsService {
 
     // LISTA QUANTIDADE DE VEZES QUE UM SETOR COMEU NO MES
     listMealCountBySectorByMonth = async (
-        range: string,
         sector: string,
         month: string,
         turn?: string
@@ -176,7 +171,7 @@ class RecordsService {
 
         if(turn) serializedTurn = turnsTypeSchema.parse(turn?.toLowerCase()) as Turns; // VALIDA TURNO
 
-        const records = await this.loadRecords(range);
+        const records = await this.loadRecords(this.sheetRange.fullRange);
 
         // FILTRA PELO SETOR
         const filteredRecordsBySector: TimeRecord[] = searchInSheet<TimeRecord>({
@@ -206,7 +201,6 @@ class RecordsService {
 
     // LISTA OS 5 SETORES QUE MAIS COMERAM NO MES
     listMostMealCountSectorsByMonth = async (
-        range: string,
         month: string,
         turn?: string
     ): Promise<MealCountBySector[]> => {
@@ -220,7 +214,7 @@ class RecordsService {
 
         if(turn) serializedTurn = turnsTypeSchema.parse(turn?.toLowerCase()) as Turns; // VALIDA TURNO
 
-        const records = await this.loadRecords(range);
+        const records = await this.loadRecords(this.sheetRange.fullRange);
 
         // FILTRA PELO MES
         const monthlyRecords = filterByMonthAndYear(
@@ -262,7 +256,6 @@ class RecordsService {
 
     // LISTA O QUANTO CADA SETOR COMEU
     listMealCountOfAllSectorsByMonth = async (
-        range: string,
         month: string,
         turn?: string
     ): Promise<MealCountBySector[]> => {
@@ -276,7 +269,7 @@ class RecordsService {
 
         if(turn) serializedTurn = turnsTypeSchema.parse(turn?.toLowerCase()) as Turns; // VALIDA TURNO
 
-        const records = await this.loadRecords(range);
+        const records = await this.loadRecords(this.sheetRange.fullRange);
 
         // FILTRA PELO MES
         const monthlyRecords = filterByMonthAndYear(
@@ -316,7 +309,6 @@ class RecordsService {
 
     // QUANTIDADE DE VEZES QUE CADA COLABORADOR COMEU NO MÊS
     listMealCountOfAllCollaboratorsByMonth = async (
-        range: string,
         month: string,
         turn?: string,
     ): Promise<MealCountByCollaborator[]> => {
@@ -330,7 +322,7 @@ class RecordsService {
 
         if(turn) serializedTurn = turnsTypeSchema.parse(turn?.toLowerCase()) as Turns; // VALIDA TURNO
 
-        const records = await this.loadRecords(range);
+        const records = await this.loadRecords(this.sheetRange.fullRange);
 
         // FILTRA PELO MES
         const monthlyRecords = filterByMonthAndYear(
@@ -376,7 +368,6 @@ class RecordsService {
 
     // QUANTIDADE DE VEZES QUE CADA TIPO DE COLABORADOR COMEU NO MÊS
     listMealCountOfAllCollaboratorTypeByMonth = async (
-        range: string,
         month: string,
         turn?: string,
     ): Promise<MealCountByCollaboratorType[]> => {
@@ -390,7 +381,7 @@ class RecordsService {
 
         if(turn) serializedTurn = turnsTypeSchema.parse(turn?.toLowerCase()) as Turns; // VALIDA TURNO
 
-        const records = await this.loadRecords(range);
+        const records = await this.loadRecords(this.sheetRange.fullRange);
 
         // FILTRA PELO MES
         const monthlyRecords = filterByMonthAndYear(
@@ -430,10 +421,9 @@ class RecordsService {
 
     // ENVIA DADOS / CRIA REGISTROS NA PLANILHA
     sendRecord = async (
-        range: string,
         values: Array<[number | string]>
     ): Promise<void> => {
-
+        const range = this.sheetRange.fullRange
         const records = Array.isArray(values) ? values : [values];
 
         const actualRange =
@@ -441,12 +431,9 @@ class RecordsService {
 
         const sheetName = actualRange.split("!")[0];
 
-        const readResponse = await this.sheets.spreadsheets.values.get({
-            spreadsheetId: this.spreadSheetId,
-            range: `${sheetName}!A:G`,
-        });
+        const readResponse = await this.googleSheetsRepository.getData(`${sheetName}!A:G`);
 
-        const rows = readResponse.data?.values || [];
+        const rows = readResponse;
 
         const hasHeader =
             rows.length > 0 &&
@@ -548,26 +535,17 @@ class RecordsService {
 
         // APLICA SAÍDAS
         if (updatesToApply.length > 0) {
-            await this.sheets.spreadsheets.values.batchUpdate({
-                spreadsheetId: this.spreadSheetId,
-                requestBody: {
-                    data: updatesToApply,
-                    valueInputOption: "USER_ENTERED",
-                },
-            });
+            this.googleSheetsRepository.updateData('', updatesToApply)
         }
 
         // CRIA NOVAS ENTRADAS
         if (rowsToAppend.length > 0) {
             console.log(rowsToAppend);
-            await this.sheets.spreadsheets.values.append({
-                spreadsheetId: this.spreadSheetId,
-                range: `${sheetName}!A:G`,
-                valueInputOption: "USER_ENTERED",
-                requestBody: {
-                    values: rowsToAppend,
-                },
-            });
+
+            await this.googleSheetsRepository.sendData(
+                `${sheetName}!A:G`,
+                rowsToAppend
+            );
         }
 
         recordsCache.clear();

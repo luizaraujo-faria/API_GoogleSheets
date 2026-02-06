@@ -5,18 +5,7 @@ import { TimeRecord } from '../types/records';
 import { createRecordRequestSchema } from "../types/records";
 
 class RecordsController{
-
-    private readonly recordsService: RecordsService;
-    public readonly range: string = 'Página1!A:G';
-    public readonly sheetName: string = 'EntradaSaida!A:G';
-
-    constructor(recordsService: RecordsService){
-        this.recordsService = recordsService;
-
-        if(!this.recordsService){
-            throw new Error('Dependencia nao injetada corretamente!');
-        }
-    }
+    constructor(private readonly recordsService: RecordsService){}
 
     getAll = async (
         req: Request, 
@@ -25,9 +14,7 @@ class RecordsController{
         
         try{
             
-            const records: TimeRecord[] = await this.recordsService.getAll(
-                this.sheetName
-            );
+            const records: TimeRecord[] = await this.recordsService.getAll();
 
             const response = new GoogleSheetsResponse<any>(
                 true,
@@ -55,7 +42,6 @@ class RecordsController{
             const { sector } = req.params;
 
             const records: TimeRecord[] = await this.recordsService.listBySector(
-                this.sheetName,
                 sector as string
             );
 
@@ -79,7 +65,6 @@ class RecordsController{
             const { day } = req.params;
 
             const records: TimeRecord[] = await this.recordsService.listByDay(
-                this.sheetName,
                 day as string
             );
 
@@ -103,7 +88,6 @@ class RecordsController{
             const { turn } = req.params;
 
             const records: TimeRecord[] = await this.recordsService.listEntryByTurn(
-                this.sheetName,
                 turn as string
             );
             
@@ -128,7 +112,6 @@ class RecordsController{
             const { turn } = req.query;
 
             const mealCountByColaborator: number = await this.recordsService.listMealCountByColaboratorIdByMonth(
-                this.sheetName,
                 colaboratorId as string,
                 month as string,
                 turn as string
@@ -160,7 +143,6 @@ class RecordsController{
             const { turn } = req.query;
 
             const mealCountBySector: number = await this.recordsService.listMealCountBySectorByMonth(
-                this.sheetName,
                 sector as string,
                 month as string,
                 turn as string
@@ -192,7 +174,6 @@ class RecordsController{
             const { turn } = req.query;
 
             const mostMealSectors: any[] = await this.recordsService.listMostMealCountSectorsByMonth(
-                this.sheetName,
                 month as string,
                 turn as string
             );
@@ -223,7 +204,6 @@ class RecordsController{
             const { turn } = req.query;
 
             const mostMealSectors: any[] = await this.recordsService.listMealCountOfAllSectorsByMonth(
-                this.sheetName,
                 month as string,
                 turn as string
             );
@@ -254,7 +234,6 @@ class RecordsController{
             const { turn } = req.query;
 
             const mostMealCollaborators: any[] = await this.recordsService.listMealCountOfAllCollaboratorsByMonth(
-                this.sheetName,
                 month as string,
                 turn as string
             );
@@ -285,7 +264,6 @@ class RecordsController{
             const { turn } = req.query;
 
             const mostMealCollaboratorType: any[] = await this.recordsService.listMealCountOfAllCollaboratorTypeByMonth(
-                this.sheetName,
                 month as string,
                 turn as string
             );
@@ -314,7 +292,7 @@ class RecordsController{
         try{
             const { values } = createRecordRequestSchema.parse(req.body);
 
-            await this.recordsService.sendRecord(this.sheetName, values);
+            await this.recordsService.sendRecord(values);
 
             return res.status(201).json(GoogleSheetsResponse.successMessage(
                 'Registro enviado com sucesso!',

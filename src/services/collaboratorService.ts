@@ -1,5 +1,6 @@
 import { collaboratorCache } from "../cache/collaboratorsCache";
-import googleSheetsService from "../config/googleSheets";
+import { GoogleSheetsRepository } from "../config/googleSheetsRepository";
+import { collaboratorRanges } from "../constants/SheetsRange";
 import ApiException from "../errors/ApiException";
 import { Collaborator, collaboratorType, collaboratorTypeSchema, CreateCollaboratorDTO } from "../types/collaborator";
 import { searchInSheet } from "../utils/filters";
@@ -7,9 +8,8 @@ import { mapSheet, mapSheetRowToCollaborator } from "../utils/mappers";
 import { validateSheetData } from "../utils/validators";
 
 class CollaboratorService {
-
-    private readonly sheets: any = googleSheetsService.getSheetsApi;
-    private readonly spreadSheetId?: string = googleSheetsService.getSpreadsheetId;
+    private readonly sheetRange = collaboratorRanges;
+    constructor(private readonly googleSheetsRepository: GoogleSheetsRepository) {}
 
     // MÉTODO PARA CARREGAR E SALVAR OS DADOS EM CACHE
     private async loadCollaborators(range: string): Promise<Collaborator[]> {
@@ -19,14 +19,11 @@ class CollaboratorService {
         if(cached) return cached; // SE EXISTIR O RETORNA
 
         // SENÃO, FAZ UMA NOVA BUSCA
-        const response = await this.sheets.spreadsheets.values.get({
-            spreadsheetId: this.spreadSheetId,
-            range,
-        });
+        const response = await this.googleSheetsRepository.getData(range);
 
         // SERIALIZA E FORMATA OS DADOS DA PLANILHA UMA VEZ SÓ
         const serializedRecords = validateSheetData<Collaborator>(
-            mapSheet<Collaborator>(response.data.values)
+            mapSheet<Collaborator>(response)
         );
 
         if(!serializedRecords.valid)
@@ -38,17 +35,17 @@ class CollaboratorService {
         return mapped; // RETORNA DADOS SERIALIZADOS E FORMATADOS
     }
 
-    getAll = async (range: string): Promise<Collaborator[]> => {
+    getAll = async (): Promise<Collaborator[]> => {
 
-        const collaborators: Collaborator[] = await this.loadCollaborators(range);
+        const collaborators: Collaborator[] = await this.loadCollaborators(this.sheetRange.fullRange);
         return collaborators;
     }
 
-    getById = async (range: string, collaboratorId: string | number): Promise<Collaborator> => {
+    getById = async (collaboratorId: string | number): Promise<Collaborator> => {
 
         // VALIDA O ID RECEBIDO
         const serializedId: number | string = collaboratorTypeSchema.collaboratorId.parse(collaboratorId);
-        const collaborators: Collaborator[] = await this.loadCollaborators(range);
+        const collaborators: Collaborator[] = await this.loadCollaborators(this.sheetRange.fullRange);
 
         // FILTRA PELO ID
         const filteredById = searchInSheet<Collaborator>({
@@ -63,11 +60,11 @@ class CollaboratorService {
         return filteredById[0];
     }
 
-    listBySector = async (range: string, sector: string): Promise<Collaborator[]> => {
+    listBySector = async (sector: string): Promise<Collaborator[]> => {
 
         // VALIDA O SETOR RECEBIDO
         const serializedSector: string = collaboratorTypeSchema.sector.parse(sector);
-        const collaborators: Collaborator[] = await this.loadCollaborators(range);
+        const collaborators: Collaborator[] = await this.loadCollaborators(this.sheetRange.fullRange);
 
         // FILTRA PELO SETOR
         const filteredColaborators = searchInSheet<Collaborator>({
@@ -82,7 +79,9 @@ class CollaboratorService {
         return filteredColaborators;
     }
 
-    createCollaborator = async (range: string, values: any[]): Promise<void> => {
+    createCollaborator = async (values: any[]): Promise<void> => {
+
+        const range = this.sheetRange.fullRange;
 
         // PEGA OS VALORES DO ARRAY E PASSA PARA OBJETO
         const [ collaboratorId, name, sector, type ] = values;
@@ -115,14 +114,7 @@ class CollaboratorService {
         ]];
 
         // ENVIA PARA O GOOGLESHEETS
-        await this.sheets.spreadsheets.values.append({
-            spreadsheetId: this.spreadSheetId,
-            range,
-            valueInputOption: 'RAW',
-            requestBody: {
-                values: dataToMatrix
-            }
-        });
+        await this.googleSheetsRepository.sendData(range, dataToMatrix);
 
         // INVALIDA CACHE
         collaboratorCache.clear();

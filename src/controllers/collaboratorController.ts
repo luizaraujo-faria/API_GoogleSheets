@@ -4,26 +4,13 @@ import CollaboratorService from "../services/collaboratorService";
 import { Collaborator } from "../types/collaborator";
 
 class CollaboratorController {
-
-    public readonly range: string = 'Página1!A:Z';
-    public readonly sheetName: string = 'Colaboradores!A:D';
-    private readonly collaboratorService: CollaboratorService;
-
-    constructor(collaboratorService: CollaboratorService){
-        this.collaboratorService = collaboratorService;
-
-        if(!this.collaboratorService){
-            throw new Error('Dependencia não injetada corretamente');
-        }
-    }
+    constructor(private readonly collaboratorService: CollaboratorService){}
 
     getAll = async (req: Request, res: Response): Promise<Response> => {
 
         try{
 
-            const collaborators: Collaborator[] = await this.collaboratorService.getAll(
-                this.sheetName as string
-            );
+            const collaborators: Collaborator[] = await this.collaboratorService.getAll();
 
             return res.status(200).json(GoogleSheetsResponse.successMessage(
                 'Colaboradores buscados com sucesso!',
@@ -44,7 +31,6 @@ class CollaboratorController {
             const { collaboratorId } = req.params;
 
             const collaborator: Collaborator = await this.collaboratorService.getById(
-                this.sheetName as string,
                 collaboratorId
             );
 
@@ -64,7 +50,6 @@ class CollaboratorController {
             const { sector } = req.params;
 
             const collaborators: Collaborator[] = await this.collaboratorService.listBySector(
-                this.sheetName as string,
                 sector
             );
 
@@ -84,7 +69,6 @@ class CollaboratorController {
             const { values } = req.body;
 
             await this.collaboratorService.createCollaborator(
-                this.sheetName,
                 values
             );
 

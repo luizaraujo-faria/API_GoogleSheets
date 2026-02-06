@@ -1,18 +1,18 @@
 import { Router } from 'express';
 import CollaboratorController from '../controllers/collaboratorController';
-import CollaboratorService from '../services/collaboratorService';
 
-const collaboratorController = new CollaboratorController(new CollaboratorService);
-const router = Router();
+export function collaboratorRouter(container: any) {
 
-router.get('/', collaboratorController.getAll);
-router.get('/id/:collaboratorId', collaboratorController.getById);
-router.get('/sector/:sector', collaboratorController.listBySector);
-router.post('/', collaboratorController.createCollaborator);
+    const collaboratorController = new CollaboratorController(container.collaboratorService);
+    const router = Router();
 
-const collaboratorRouter = {
-    prefix: '/colaborators',
-    router,
+    router.get('/', collaboratorController.getAll);
+    router.get('/id/:collaboratorId', collaboratorController.getById);
+    router.get('/sector/:sector', collaboratorController.listBySector);
+    router.post('/', collaboratorController.createCollaborator);
+
+    return {
+        prefix: '/colaborators',
+        router,
+    }
 }
-
-export default collaboratorRouter;

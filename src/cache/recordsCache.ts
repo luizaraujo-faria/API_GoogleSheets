@@ -8,7 +8,7 @@ type CacheEntry = {
 class RecordsCache {
 
     private store = new Map<string, CacheEntry>();
-    private readonly TTL: number = 60;
+    private readonly TTL: number = 63;
 
     get(range: string): TimeRecord[] | null {
 
