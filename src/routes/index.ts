@@ -1,5 +1,5 @@
-import recordsRouter from "./records.route";
-import collaboratorRouter from "./collaborator.route";
+import { recordsRouter } from "./records.route";
+import { collaboratorRouter } from "./collaborator.route";
 import { Router } from 'express';
 
 type RouteType = {
@@ -7,9 +7,14 @@ type RouteType = {
     router: Router;
 }
 
-const routes: RouteType[] = [
-    recordsRouter,
-    collaboratorRouter,
-]
+export function routes(container: any): RouteType[] {
+
+    return [
+        recordsRouter(container),
+        collaboratorRouter(container),
+    ]
+}
+
+
 
 export default routes;
