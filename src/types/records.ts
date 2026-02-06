@@ -20,8 +20,6 @@ export interface RecordsFilter {
   recordId?: number;
 }
 
-
-
 export interface MealCountBySector {
   sector: string;
   total: unknown;
@@ -36,6 +34,13 @@ export interface MealCountByCollaborator {
 export interface MealCountByCollaboratorType {
   type: string;
   total: unknown;
+}
+
+export interface AverageMealTimeBySector {
+  sector: string;
+  avarageTime: string;
+  avarageMinutes: number,
+  totalRecords: number;
 }
 
 export type MealCountMap = Record<string, MealCountByCollaborator>;

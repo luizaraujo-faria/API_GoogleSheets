@@ -25,43 +25,28 @@ class CollaboratorController {
         }
     }
 
-    getById = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
+    // listByFilter = async (
+    //     req: Request, 
+    //     res: Response, 
+    //     next: NextFunction
+    // ): Promise<Response | void> => {
 
-        try{
-            const { collaboratorId } = req.params;
+    //     try{
+    //         const { sector } = req.params;
 
-            const collaborator: Collaborator = await this.collaboratorService.getById(
-                collaboratorId
-            );
+    //         const collaborators: Collaborator[] = await this.collaboratorService.listBySector(
+    //             sector
+    //         );
 
-            return res.status(200).json(GoogleSheetsResponse.successMessage(
-                'Colaborador buscado pelo id com sucesso!',
-                collaborator
-            ));
-        }
-        catch(err: any){
-            next(err);
-        }
-    }
-
-    listBySector = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
-
-        try{
-            const { sector } = req.params;
-
-            const collaborators: Collaborator[] = await this.collaboratorService.listBySector(
-                sector
-            );
-
-            return res.status(200).json(GoogleSheetsResponse.successMessage(
-                'Colaboradores listados por setor com sucesso!',
-                collaborators
-            ))
-        }
-        catch(err: any){
-            next(err);
-        }
-    }
+    //         return res.status(200).json(GoogleSheetsResponse.successMessage(
+    //             'Colaboradores listados por setor com sucesso!',
+    //             collaborators
+    //         ))
+    //     }
+    //     catch(err: any){
+    //         next(err);
+    //     }
+    // }
 
     createCollaborator = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
 

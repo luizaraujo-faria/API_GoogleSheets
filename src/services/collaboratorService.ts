@@ -1,8 +1,11 @@
 import { collaboratorCache } from "../cache/collaboratorsCache";
 import { GoogleSheetsRepository } from "../config/googleSheetsRepository";
 import { collaboratorRanges } from "../constants/SheetsRange";
+import { CreateCollaboratorDTO } from "../dto/createCollaborator";
 import ApiException from "../errors/ApiException";
-import { Collaborator, collaboratorType, collaboratorTypeSchema, CreateCollaboratorDTO } from "../types/collaborator";
+import { collaboratorType } from "../schemas/collaboratorSchema";
+import { collaboratorTypeSchema } from "../schemas/commonSchema";
+import { Collaborator } from "../types/collaborator";
 import { searchInSheet } from "../utils/filters";
 import { mapSheet, mapSheetRowToCollaborator } from "../utils/mappers";
 import { validateSheetData } from "../utils/validators";
@@ -41,43 +44,7 @@ class CollaboratorService {
         return collaborators;
     }
 
-    getById = async (collaboratorId: string | number): Promise<Collaborator> => {
-
-        // VALIDA O ID RECEBIDO
-        const serializedId: number | string = collaboratorTypeSchema.collaboratorId.parse(collaboratorId);
-        const collaborators: Collaborator[] = await this.loadCollaborators(this.sheetRange.fullRange);
-
-        // FILTRA PELO ID
-        const filteredById = searchInSheet<Collaborator>({
-            data: collaborators,
-            filters: { collaboratorId: serializedId }
-        });
-
-        // VERIFICA SE EXISTE COM O ID
-        if(!filteredById || filteredById.length === 0)
-            throw new ApiException('Nenhum colaborador encontrado com este ID!', 404);
-
-        return filteredById[0];
-    }
-
-    listBySector = async (sector: string): Promise<Collaborator[]> => {
-
-        // VALIDA O SETOR RECEBIDO
-        const serializedSector: string = collaboratorTypeSchema.sector.parse(sector);
-        const collaborators: Collaborator[] = await this.loadCollaborators(this.sheetRange.fullRange);
-
-        // FILTRA PELO SETOR
-        const filteredColaborators = searchInSheet<Collaborator>({
-            data: collaborators,
-            filters: { sector: serializedSector }
-        });
-
-        // VERIFICA SE EXISTE PELO SETOR
-        if(!filteredColaborators || filteredColaborators.length === 0)
-            throw new ApiException('Nenhum colaborador encontrado com este setor!', 404);
-
-        return filteredColaborators;
-    }
+    // METODO POR FILTRO
 
     createCollaborator = async (values: any[]): Promise<void> => {
 

@@ -3,6 +3,7 @@ import {
   collaboratorIdSchema,
   textFieldSchema,
   daySchema,
+  collaboratorTypeSchema,
 } from './commonSchema';
 
 export const recordsFilterSchema = z.object({

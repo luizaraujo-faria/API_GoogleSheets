@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import GoogleSheetsResponse from '../responses/googleSheetsResponse';
 import RecordsService from '../services/recordsService';
-import { TimeRecord } from '../types/records';
+import { AverageMealTimeBySector, TimeRecord } from '../types/records';
 import { recordsFilterSchema } from '../schemas/recordsSchema';
 import { createRecordRequestSchema } from '../dto/createRecord';
 
@@ -33,7 +33,11 @@ class RecordsController{
         }
     }
 
-    getAllByFilters = async (req: Request, res: Response): Promise<Response | void> => {
+    getAllByFilters = async (
+        req: Request, 
+        res: Response,
+        next: NextFunction
+    ): Promise<Response | void> => {
 
         try{
             const records = await this.recordsService.getAllByFilters(req.query);
@@ -46,10 +50,7 @@ class RecordsController{
             return res.status(200).json(response);
         }
         catch(err: any){
-            return res.status(err.httpStatus || 500).json(GoogleSheetsResponse.errorMessage(
-                'Falha ao buscar dados',
-                err.message
-            ));
+            next(err);
         }
     }
 
@@ -139,6 +140,37 @@ class RecordsController{
             ));
         }
         catch(err: any){
+            next(err);
+        }
+    }
+
+    listAverageMealTimeBySector = async (
+        req: Request, 
+        res: Response,
+        next: NextFunction
+    ): Promise<Response | void> => {
+
+        try{
+            const { month } = req.params;
+            const { turn } = req.query;
+
+            const avarageMealTimeBySector: AverageMealTimeBySector[] 
+            = await this.recordsService.listAverageMealTimeBySector(
+                month as string,
+                turn as string
+            );
+
+            const responseMessage = 
+                turn ?
+                `Média de tempo que cada setor comeu durante o mês (${month}) no turno (${turn}) carregados!`
+                : `Média de tempo que cada setor comeu durante o mês (${month}) carregados!`;
+
+            return res.status(200).json(GoogleSheetsResponse.successMessage(
+                responseMessage,
+                avarageMealTimeBySector
+            )); 
+        }
+        catch(err: any) {
             next(err);
         }
     }

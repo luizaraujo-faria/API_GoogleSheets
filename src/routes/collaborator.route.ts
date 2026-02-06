@@ -7,8 +7,6 @@ export function collaboratorRouter(container: any) {
     const router = Router();
 
     router.get('/', collaboratorController.getAll);
-    router.get('/id/:collaboratorId', collaboratorController.getById);
-    router.get('/sector/:sector', collaboratorController.listBySector);
     router.post('/', collaboratorController.createCollaborator);
 
     return {

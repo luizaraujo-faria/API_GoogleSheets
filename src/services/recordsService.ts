@@ -1,5 +1,5 @@
 import ApiException from "../errors/ApiException";
-import { mapSheet, mapSheetRowToRecord } from "../utils/mappers";
+import { getDurationInMinutes, groupAndCount, mapSheet, mapSheetRowToRecord, minutesToHHmm } from "../utils/mappers";
 import { filterByMonthAndYear, filterByTurn, searchInSheet } from "../utils/filters";
 import { normalizeDay, validateSheetData } from "../utils/validators";
 import utc from 'dayjs/plugin/utc';
@@ -10,9 +10,10 @@ import { recordsCache } from "../cache/recordsCache";
 import { GoogleSheetsRepository } from "../config/googleSheetsRepository";
 import { recordsRanges } from "../constants/SheetsRange";
 import dayjs from "dayjs";
-import { MealCountByCollaborator, MealCountByCollaboratorType, MealCountBySector, MealCountMap, RecordsFilter, TimeRecord } from "../types/records";
+import { AverageMealTimeBySector, MealCountByCollaborator, MealCountByCollaboratorType, MealCountBySector, MealCountMap, RecordsFilter, TimeRecord } from "../types/records";
 import { collaboratorIdSchema } from "../schemas/commonSchema";
 import { recordsFilterSchema } from "../schemas/recordsSchema";
+import { columnIndexToLetter, hasHeaderRow, indexOpenEntries, processRecord } from "../utils/sendRecordsHelper";
 
 dayjs.extend(customParseFormat);
 dayjs.extend(utc)
@@ -53,77 +54,11 @@ class RecordsService {
         return records;
     }
 
-
-
-    // LISTA OS 5 SETORES QUE MAIS COMERAM NO MES
-    listMostMealCountSectorsByMonth = async (
-        month: string,
-        turn?: string
-    ): Promise<MealCountBySector[]> => {
-
-        let serializedTurn: Turns | undefined = undefined; // TURNO É OPCIONAL
-        const currentYear = dayjs().year();
-        const targetMonth = Number(month);
-
-        if(isNaN(targetMonth) || targetMonth < 1 || targetMonth > 12)
-            throw new ApiException('Mês informado é inválido!', 400);
-
-        if(turn) serializedTurn = turnsTypeSchema.parse(turn?.toLowerCase()) as Turns; // VALIDA TURNO
-
-        const records = await this.loadRecords(this.sheetRange.fullRange);
-
-        // FILTRA PELO MES
-        const monthlyRecords = filterByMonthAndYear(
-            records,
-            targetMonth,
-            currentYear
-        );
-
-        // SE O TURNO FOR INFORMADO, FILTRA POR ELE, SENÃO SEGUE SOMENTE COM FILTROS PELO MES
-        const finalFilteredRecords: TimeRecord[] | undefined = turn ? 
-            filterByTurn<TimeRecord>(monthlyRecords!, 'entry', serializedTurn!) 
-            : monthlyRecords;
-    
-        if(!finalFilteredRecords || finalFilteredRecords.length === 0)
-            throw new ApiException('Nenhum registro encontrado para este mês e ou turno!', 404);
-
-        const countBySector: any = {}; // ARMAZENA CONTAGEM POR SETOR
-
-        finalFilteredRecords!.forEach((record) => {
-            const sector = record.sector;
-
-            if(!countBySector[sector]){ 
-                countBySector[sector] = 1; 
-            }
-            else{
-                countBySector[sector]++; // SE ENCONTRAR ALGUM REGISTRO DAQUELE SETOR, ADICIONA MAIS 1
-            }
-        });
-
-        // ORDENA OS SETORES EM ORDEM DECRESCENTE
-        const orderedRecords = Object.entries(countBySector)
-            .map(([sector, total]) => ({ sector, total }))
-            .sort((a: any, b: any) => ( b.total - a.total ));
-
-        const mostFiveMealSectors = orderedRecords.slice(0, 5);
-
-        return mostFiveMealSectors;
-    }
-
+    // BUSCA TODOS OS REGISTROS COM FILTROS
     async getAllByFilters(rawFilters: RecordsFilter): Promise<TimeRecord[]> {
 
         const filters = recordsFilterSchema.parse(rawFilters);
         const records = await this.loadRecords(this.sheetRange.fullRange);
-
-        // const normalizedFilters = {
-        //     ...filters,
-        //     collaboratorId: filters.collaboratorId
-        //         ? Number(filters.collaboratorId)
-        //         : undefined,
-        //     recordId: filters.recordId
-        //         ? Number(filters.recordId)
-        //         : undefined,
-        // };
 
         const filteredRecords = searchInSheet<TimeRecord>({
             data: records,
@@ -136,302 +71,223 @@ class RecordsService {
         return filteredRecords;
     }
 
-    // LISTA O QUANTO CADA SETOR COMEU
+    // LISTA QUANTAS VEZES CADA SETOR COMEU NO MÊS
     listMealCountOfAllSectorsByMonth = async (
         month: string,
         turn?: string
     ): Promise<MealCountBySector[]> => {
 
-        let serializedTurn: Turns | undefined = undefined; // TURNO É OPCIONAL
-        const currentYear = dayjs().year();
-        const targetMonth = Number(month);
+        const records = await this.getMonthlyFilteredRecords(month, turn);
 
-        if(isNaN(targetMonth) || targetMonth < 1 || targetMonth > 12)
-            throw new ApiException('Mês informado é inválido!', 400);
-
-        if(turn) serializedTurn = turnsTypeSchema.parse(turn?.toLowerCase()) as Turns; // VALIDA TURNO
-
-        const records = await this.loadRecords(this.sheetRange.fullRange);
-
-        // FILTRA PELO MES
-        const monthlyRecords = filterByMonthAndYear(
+        return groupAndCount(
             records,
-            targetMonth,
-            currentYear
+            r => r.sector,
+            (sector, total) => ({ sector, total })
         );
-
-        // SE O TURNO FOR INFORMADO, FILTRA POR ELE, SENÃO SEGUE SOMENTE COM FILTROS PELO MES
-        const finalFilteredRecords: TimeRecord[] | undefined = turn ? 
-            filterByTurn<TimeRecord>(monthlyRecords!, 'entry', serializedTurn!) 
-            : monthlyRecords;
-    
-        if(!finalFilteredRecords || finalFilteredRecords.length === 0)
-            throw new ApiException('Nenhum registro encontrado para este mês e ou turno!', 404);
-
-        const countBySector: any = {}; // ARMAZENA CONTAGEM POR SETOR
-
-        finalFilteredRecords!.forEach((record) => {
-            const sector = record.sector;
-
-            if(!countBySector[sector]){ 
-                countBySector[sector] = 1; 
-            }
-            else{
-                countBySector[sector]++; // SE ENCONTRAR ALGUM REGISTRO DAQUELE SETOR, ADICIONA MAIS 1
-            }
-        });
-
-        // ORDENA OS SETORES EM ORDEM DECRESCENTE
-        const orderedRecords = Object.entries(countBySector)
-            .map(([sector, total]) => ({ sector, total }))
-            .sort((a: any, b: any) => ( b.total - a.total ));
-
-        return orderedRecords;
-    }
+    };
 
     // QUANTIDADE DE VEZES QUE CADA COLABORADOR COMEU NO MÊS
     listMealCountOfAllCollaboratorsByMonth = async (
         month: string,
-        turn?: string,
+        turn?: string
     ): Promise<MealCountByCollaborator[]> => {
-        
-        let serializedTurn: Turns | undefined = undefined; // TURNO É OPCIONAL
-        const currentYear = dayjs().year();
-        const targetMonth = Number(month);
 
-        if(isNaN(targetMonth) || targetMonth < 1 || targetMonth > 12)
-            throw new ApiException('Mês informado é inválido!', 400);
+        const records = await this.getMonthlyFilteredRecords(month, turn);
 
-        if(turn) serializedTurn = turnsTypeSchema.parse(turn?.toLowerCase()) as Turns; // VALIDA TURNO
-
-        const records = await this.loadRecords(this.sheetRange.fullRange);
-
-        // FILTRA PELO MES
-        const monthlyRecords = filterByMonthAndYear(
+        return groupAndCount(
             records,
-            targetMonth,
-            currentYear
+            r => ({ collaborator: r.name, sector: r.sector }),
+            (key, total) => ({
+            collaborator: key.collaborator,
+            sector: key.sector,
+            total,
+            })
         );
-
-        // SE O TURNO FOR INFORMADO, FILTRA POR ELE, SENÃO SEGUE SOMENTE COM FILTROS PELO MES
-        const finalFilteredRecords: TimeRecord[] | undefined = turn ? 
-            filterByTurn<TimeRecord>(monthlyRecords!, 'entry', serializedTurn!) 
-            : monthlyRecords;
-    
-        if(!finalFilteredRecords || finalFilteredRecords.length === 0)
-            throw new ApiException('Nenhum registro encontrado para este mês e ou turno!', 404);
-
-        const countByCollaborator: MealCountMap = {}; // ARMAZENA CONTAGEM POR SETOR
-
-        finalFilteredRecords!.forEach((record) => {
-            const collaborator = record.name;
-            const sector = record.sector;
-
-            const key: string = `${collaborator}|${sector}`;
-
-            if(!countByCollaborator[key]){ 
-                countByCollaborator[key] = {
-                    collaborator,
-                    sector,
-                    total: 1,
-                }; 
-            }
-            else{
-                countByCollaborator[key].total++; // SE ENCONTRAR ALGUM REGISTRO DAQUELE SETOR, ADICIONA MAIS 1
-            }
-        });
-
-        // ORDENA OS SETORES EM ORDEM DECRESCENTE
-        const orderedRecords: MealCountByCollaborator[] = Object.values(countByCollaborator)
-            .sort((a: any, b: any) => ( b.total - a.total ));
-
-        return orderedRecords;
     };
 
     // QUANTIDADE DE VEZES QUE CADA TIPO DE COLABORADOR COMEU NO MÊS
     listMealCountOfAllCollaboratorTypeByMonth = async (
         month: string,
-        turn?: string,
+        turn?: string
     ): Promise<MealCountByCollaboratorType[]> => {
-        
-        let serializedTurn: Turns | undefined = undefined; // TURNO É OPCIONAL
-        const currentYear = dayjs().year();
-        const targetMonth = Number(month);
 
-        if(isNaN(targetMonth) || targetMonth < 1 || targetMonth > 12)
-            throw new ApiException('Mês informado é inválido!', 400);
+        const records = await this.getMonthlyFilteredRecords(month, turn);
 
-        if(turn) serializedTurn = turnsTypeSchema.parse(turn?.toLowerCase()) as Turns; // VALIDA TURNO
-
-        const records = await this.loadRecords(this.sheetRange.fullRange);
-
-        // FILTRA PELO MES
-        const monthlyRecords = filterByMonthAndYear(
+        return groupAndCount(
             records,
-            targetMonth,
-            currentYear
+            r => r.type,
+            (type, total) => ({ type, total })
         );
+    };
 
-        // SE O TURNO FOR INFORMADO, FILTRA POR ELE, SENÃO SEGUE SOMENTE COM FILTROS PELO MES
-        const finalFilteredRecords: TimeRecord[] | undefined = turn ? 
-            filterByTurn<TimeRecord>(monthlyRecords!, 'entry', serializedTurn!) 
-            : monthlyRecords;
-    
-        if(!finalFilteredRecords || finalFilteredRecords.length === 0)
-            throw new ApiException('Nenhum registro encontrado para este mês e ou turno!', 404);
+    // LISTA POR MÉDIA DE TEMPO
+    listAverageMealTimeBySector = async (
+        month: string,
+        turn?: string
+    ): Promise<AverageMealTimeBySector[]> => {
 
-        const countByCollaborator: any = {}; // ARMAZENA CONTAGEM POR SETOR
 
-        finalFilteredRecords!.forEach((record) => {
-            const type = record.type;
+        const records = await this.getMonthlyFilteredRecords(month, turn);
 
-            if(!countByCollaborator[type]){ 
-                countByCollaborator[type] = 1; 
-            }
-            else{
-                countByCollaborator[type]++; // SE ENCONTRAR ALGUM REGISTRO DAQUELE SETOR, ADICIONA MAIS 1
+        const accumulator = new Map<
+            string,
+            { totalMinutes: number; totalRecords: number }
+        >();
+
+        records.forEach(record => {
+            const duration = getDurationInMinutes(
+                record.entry,
+                record.exit
+            );
+
+            if (duration === null) return;
+
+            const sector = record.sector;
+
+            if (!accumulator.has(sector)) {
+                accumulator.set(sector, {
+                    totalMinutes: duration,
+                    totalRecords: 1,
+                });
+            } 
+            else {
+                const current = accumulator.get(sector)!;
+                current.totalMinutes += duration;
+                current.totalRecords++;
             }
         });
 
-        // ORDENA OS SETORES EM ORDEM DECRESCENTE
-        const orderedRecords: MealCountByCollaboratorType[] = Object.entries(countByCollaborator)
-            .map(([type, total]) => ({ type, total }))
-            .sort((a: any, b: any) => ( b.total - a.total ));
+        const result = Array.from(accumulator.entries())
+            .map(([sector, data]) => {
+                const avgMinutes = Math.round(
+                    data.totalMinutes / data.totalRecords
+                );
 
-        return orderedRecords;
+                return {
+                    sector,
+                    avarageTime: minutesToHHmm(avgMinutes),
+                    avarageMinutes: avgMinutes,
+                    totalRecords: data.totalRecords,
+                };
+            })
+            .sort((a, b) => b.avarageMinutes - a.avarageMinutes);
+
+        if (result.length === 0)
+            throw new ApiException('Nenhum registro válido para cálculo de média', 404);
+
+        return result;
     };
 
     // ENVIA DADOS / CRIA REGISTROS NA PLANILHA
     sendRecord = async (
         values: Array<[number | string]>
     ): Promise<void> => {
-        const range = this.sheetRange.fullRange
+
         const records = Array.isArray(values) ? values : [values];
 
-        const actualRange =
-            range && range.includes("!") ? range : `${range || "EntradaSaida"}!A:G`;
+        const range =
+            this.sheetRange.fullRange?.includes('!')
+            ? this.sheetRange.fullRange
+            : `${this.sheetRange.fullRange || 'EntradaSaida'}!A:G`;
 
-        const sheetName = actualRange.split("!")[0];
+        const sheetName = range.split('!')[0];
 
-        const readResponse = await this.googleSheetsRepository.getData(`${sheetName}!A:G`);
+        const rows = await this.googleSheetsRepository.getData(
+            `${sheetName}!A:G`
+        );
 
-        const rows = readResponse;
+        const dataStartIndex = hasHeaderRow(rows) ? 1 : 0;
 
-        const hasHeader =
-            rows.length > 0 &&
-            rows[0].some(
-                (cell: any) =>
-                    typeof cell === "string" && /colaborador.*id/i.test(cell)
-            );
-
-        const dataStartIndex = hasHeader ? 1 : 0;
-
-        // COLUNAS
+        // índices fixos
         const idxColab = 0;
         const idxDay = 4;
         const idxEntry = 5;
         const idxExit = 6;
 
-        const now = dayjs().tz("America/Sao_Paulo");
-        const todayFormatted = now.format("DD/MM/YY");
-        const nowTime = now.format("HH:mm");
+        const now = dayjs().tz('America/Sao_Paulo');
+        const todayFormatted = now.format('DD/MM/YY');
+        const nowTime = now.format('HH:mm');
+
+        const openEntryIndex = indexOpenEntries({
+            rows,
+            dataStartIndex,
+            now,
+            idxColab,
+            idxDay,
+            idxExit,
+        });
 
         const updatesToApply: { range: string; values: any[][] }[] = [];
         const rowsToAppend: any[][] = [];
 
-        /**
-         * INDEXA ÚLTIMO REGISTRO ABERTO
-         * key = ID
-         * value = rowIndex
-         */
-        const openEntryIndex = new Map<string, number>();
+        const exitColumnLetter = columnIndexToLetter(idxExit);
 
-        for (let i = rows.length - 1; i >= dataStartIndex; i--) {
-            const row = rows[i] || [];
-
-            const colab = row[idxColab]?.toString().trim();
-            const rawDay = row[idxDay];
-            const exit = row[idxExit]?.toString().trim();
-
-            if (!colab || !rawDay) continue;
-
-            const day = normalizeDay(rawDay);
-
-            console.log({
-                rawDay,
-                normalized: normalizeDay(rawDay)?.format("YYYY-MM-DD"),
-                isToday: normalizeDay(rawDay)?.isSame(now, "day")
-            });
-            if (!day) continue;
-
-            const isToday = day.isSame(now, "day");
-            const exitIsEmpty = !exit || exit === "";
-
-            if (isToday && exitIsEmpty) {
-                openEntryIndex.set(colab, i);
-            }
-        }
-
-        // CONVERTE ÍNDICE DA COLUNA DE SAÍDA PARA LETRA
-        const exitColumnLetter = (() => {
-            let n = idxExit;
-            let s = "";
-            while (n >= 0) {
-                s = String.fromCharCode((n % 26) + 65) + s;
-                n = Math.floor(n / 26) - 1;
-            }
-            return s;
-        })();
-
-        // PROCESSA CADA ID RECEBIDO
         for (const record of records) {
-
-            const serializedId = collaboratorIdSchema.parse(
-                String(record[0]).trim()
-            );
-
-            const foundRowIndex = openEntryIndex.get(String(serializedId));
-
-            // 🟢 FECHA SAÍDA
-            if (foundRowIndex !== undefined) {
-                const spreadsheetRow = foundRowIndex + 1;
-
-                updatesToApply.push({
-                    range: `${sheetName}!${exitColumnLetter}${spreadsheetRow}`,
-                    values: [[nowTime]],
-                });
-
-                openEntryIndex.delete(String(serializedId));
-                continue;
-            }
-
-            // 🔵 CRIA NOVA ENTRADA
-            const newRow: any[] = [];
-            newRow[idxColab] = serializedId;
-            newRow[idxDay] = todayFormatted;
-            newRow[idxEntry] = nowTime;
-            newRow[idxExit] = "";
-
-            rowsToAppend.push(newRow);
+            processRecord({
+            record,
+            sheetName,
+            nowTime,
+            todayFormatted,
+            exitColumnLetter,
+            idxColab,
+            idxDay,
+            idxEntry,
+            idxExit,
+            openEntryIndex,
+            updatesToApply,
+            rowsToAppend,
+            });
         }
 
-        // APLICA SAÍDAS
         if (updatesToApply.length > 0) {
-            this.googleSheetsRepository.updateData('', updatesToApply)
+            await this.googleSheetsRepository.updateData('', updatesToApply);
         }
 
-        // CRIA NOVAS ENTRADAS
         if (rowsToAppend.length > 0) {
-            console.log(rowsToAppend);
-
             await this.googleSheetsRepository.sendData(
-                `${sheetName}!A:G`,
-                rowsToAppend
+            `${sheetName}!A:G`,
+            rowsToAppend
             );
         }
 
         recordsCache.clear();
     };
+
+    // CENTRALIZA VALIDAÇÃO E FILTROS DE BUSCA PELO MÊS
+    private async getMonthlyFilteredRecords(
+        month: string,
+        turn?: string
+    ): Promise<TimeRecord[]> {
+
+        const targetMonth = Number(month);
+        const currentYear = dayjs().year();
+
+        if (isNaN(targetMonth) || targetMonth < 1 || targetMonth > 12) {
+            throw new ApiException('Mês informado é inválido!', 400);
+        }
+
+        const serializedTurn = turn
+            ? turnsTypeSchema.parse(turn.toLowerCase()) as Turns
+            : undefined;
+
+        const records = await this.loadRecords(this.sheetRange.fullRange);
+
+        let filtered = filterByMonthAndYear(records, targetMonth, currentYear);
+
+        if (!filtered || filtered.length === 0) {
+            throw new ApiException('Nenhum registro encontrado para este mês!', 404);
+        }
+
+        if (serializedTurn) {
+            filtered = filterByTurn(filtered, 'entry', serializedTurn);
+        }
+
+        if (!filtered || filtered.length === 0) {
+            throw new ApiException('Nenhum registro encontrado para este mês e/ou turno!', 404);
+        }
+
+        return filtered;
+    }
 }
 
 export default RecordsService;
