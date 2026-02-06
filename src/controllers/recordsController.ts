@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
-import GoogleSheetsResponse from '../responses/googleSheetsResponse';
+import GoogleSheetsResponse from '../res/googleSheetsResponse';
 import RecordsService from '../services/recordsService';
 import { AverageMealTimeBySector, TimeRecord } from '../types/records';
 import { recordsFilterSchema } from '../schemas/recordsSchema';

@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import GoogleSheetsResponse from "../responses/googleSheetsResponse";
+import GoogleSheetsResponse from "../res/googleSheetsResponse";
 import CollaboratorService from "../services/collaboratorService";
 import { Collaborator } from "../types/collaborator";
 
