@@ -124,8 +124,7 @@ class RecordsService {
     listAverageMealTimeBySector = async (
         month: string,
         turn?: string
-    ): Promise<AverageMealTimeBySector[]> => {
-
+    ): Promise<{ sector: string; total: number }[]> => {
 
         const records = await this.getMonthlyFilteredRecords(month, turn);
 
@@ -149,8 +148,7 @@ class RecordsService {
                     totalMinutes: duration,
                     totalRecords: 1,
                 });
-            } 
-            else {
+            } else {
                 const current = accumulator.get(sector)!;
                 current.totalMinutes += duration;
                 current.totalRecords++;
@@ -158,19 +156,11 @@ class RecordsService {
         });
 
         const result = Array.from(accumulator.entries())
-            .map(([sector, data]) => {
-                const avgMinutes = Math.round(
-                    data.totalMinutes / data.totalRecords
-                );
-
-                return {
-                    sector,
-                    avarageTime: minutesToHHmm(avgMinutes),
-                    avarageMinutes: avgMinutes,
-                    totalRecords: data.totalRecords,
-                };
-            })
-            .sort((a, b) => b.avarageMinutes - a.avarageMinutes);
+            .map(([sector, data]) => ({
+                sector,
+                total: Math.round(data.totalMinutes / data.totalRecords), // média em minutos
+            }))
+            .sort((a, b) => b.total - a.total);
 
         if (result.length === 0)
             throw new ApiException('Nenhum registro válido para cálculo de média', 404);
