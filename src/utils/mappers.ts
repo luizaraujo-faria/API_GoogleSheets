@@ -64,7 +64,26 @@ export function isTimeInsideShift(time: string, turn: Turns): boolean {
     );
 }
 
-// MAPEIA PARA CONTAGEM DE POR OBJETO
+// MAPEIA PARA CONTAGEM POR HORA
+export function groupByTime<T>(
+    data: TimeRecord[],
+) {
+    const counter = new Map<string, number>();
+
+    data.forEach(record => {
+        const hour = String(record.entry).split(':')[0];
+        const formattedHour = `${hour}:00`;
+
+        counter.set(formattedHour, (counter.get(formattedHour) || 0) + 1);
+    });
+
+    return Array.from(counter.entries()).map(([hour, total]) => ({
+        hour,
+        total
+    }));
+}
+
+// MAPEIA PARA CONTAGEM
 export function groupAndCount<T>(
     data: TimeRecord[],
     keyFn: (record: TimeRecord) => T,

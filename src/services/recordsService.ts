@@ -1,5 +1,5 @@
 import ApiException from "../errors/ApiException";
-import { getDurationInMinutes, groupAndCount, mapSheet, mapSheetRowToRecord, minutesToHHmm } from "../utils/mappers";
+import { getDurationInMinutes, groupAndCount, groupByTime, mapSheet, mapSheetRowToRecord } from "../utils/mappers";
 import { filterByMonthAndYear, filterByTurn, searchInSheet } from "../utils/filters";
 import { normalizeDay, validateSheetData } from "../utils/validators";
 import utc from 'dayjs/plugin/utc';
@@ -10,8 +10,7 @@ import { recordsCache } from "../cache/recordsCache";
 import { GoogleSheetsRepository } from "../config/googleSheetsRepository";
 import { recordsRanges } from "../constants/SheetsRange";
 import dayjs from "dayjs";
-import { AverageMealTimeBySector, MealCountByCollaborator, MealCountByCollaboratorType, MealCountBySector, MealCountMap, RecordsFilter, TimeRecord } from "../types/records";
-import { collaboratorIdSchema } from "../schemas/commonSchema";
+import { EntriesByHour, MealCountByCollaborator, MealCountByCollaboratorType, MealCountBySector, RecordsFilter, TimeRecord } from "../types/records";
 import { recordsFilterSchema } from "../schemas/recordsSchema";
 import { columnIndexToLetter, hasHeaderRow, indexOpenEntries, processRecord } from "../utils/sendRecordsHelper";
 
@@ -119,6 +118,20 @@ class RecordsService {
             (type, total) => ({ type, total })
         );
     };
+
+    // LISTA POR QUANTIDADE POR HORA
+    groupByPeakTimeByDay = async (day: string): Promise<EntriesByHour[]> => {
+
+        const normalizedDay = normalizeDay(day)?.format('DD/MM/YY');
+        const records = await this.loadRecords(this.sheetRange.fullRange);
+
+        const filteredRecords = searchInSheet<TimeRecord>({
+            data: records,
+            filters: { day: normalizedDay }
+        })
+
+        return groupByTime(filteredRecords);
+    }
 
     // LISTA POR MÉDIA DE TEMPO
     listAverageMealTimeBySector = async (

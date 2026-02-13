@@ -36,6 +36,11 @@ export interface MealCountByCollaboratorType {
   total: number;
 }
 
+export interface EntriesByHour {
+  hour: string;
+  total: number;
+}
+
 export interface AverageMealTimeBySector {
   sector: string;
   total: number

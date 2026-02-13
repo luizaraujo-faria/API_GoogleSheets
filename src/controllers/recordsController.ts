@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import GoogleSheetsResponse from '../res/googleSheetsResponse';
 import RecordsService from '../services/recordsService';
-import { AverageMealTimeBySector, TimeRecord } from '../types/records';
+import { AverageMealTimeBySector, EntriesByHour, TimeRecord } from '../types/records';
 import { recordsFilterSchema } from '../schemas/recordsSchema';
 import { createRecordRequestSchema } from '../dto/createRecord';
 
@@ -140,6 +140,32 @@ class RecordsController{
             ));
         }
         catch(err: any){
+            next(err);
+        }
+    }
+
+    groupByPeakTimeByDay = async (
+        req: Request,
+        res: Response,
+        next: NextFunction        
+    ): Promise<Response | void> => {
+        try{
+            const { day } = req.query;
+
+            const entriesByHour: EntriesByHour[] 
+            = await this.recordsService.groupByPeakTimeByDay(
+                day as string
+            );
+
+            const responseMessage = 
+                `Variação de entradas por hora do dia ${day} carregados!`;
+
+            res.status(200).json(GoogleSheetsResponse.successMessage(
+                responseMessage,
+                entriesByHour,
+            )); 
+        }
+        catch(err: any) {
             next(err);
         }
     }
