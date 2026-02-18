@@ -120,66 +120,11 @@ class RecordsService {
     };
 
     // LISTA POR QUANTIDADE POR HORA
-    groupByPeakTimeByDay = async (day: string): Promise<EntriesByHour[]> => {
+    groupByPeakTimeByMonth = async (month: string): Promise<EntriesByHour[]> => {
 
-        const normalizedDay = normalizeDay(day)?.format('DD/MM/YY');
-        const records = await this.loadRecords(this.sheetRange.fullRange);
-
-        const filteredRecords = searchInSheet<TimeRecord>({
-            data: records,
-            filters: { day: normalizedDay }
-        })
-
-        return groupByTime(filteredRecords);
+        const records = await this.getMonthlyFilteredRecords(month);
+        return groupByTime(records);
     }
-
-    // LISTA POR MÉDIA DE TEMPO
-    listAverageMealTimeBySector = async (
-        month: string,
-        turn?: string
-    ): Promise<{ sector: string; total: number }[]> => {
-
-        const records = await this.getMonthlyFilteredRecords(month, turn);
-
-        const accumulator = new Map<
-            string,
-            { totalMinutes: number; totalRecords: number }
-        >();
-
-        records.forEach(record => {
-            const duration = getDurationInMinutes(
-                record.entry,
-                record.exit
-            );
-
-            if (duration === null) return;
-
-            const sector = record.sector;
-
-            if (!accumulator.has(sector)) {
-                accumulator.set(sector, {
-                    totalMinutes: duration,
-                    totalRecords: 1,
-                });
-            } else {
-                const current = accumulator.get(sector)!;
-                current.totalMinutes += duration;
-                current.totalRecords++;
-            }
-        });
-
-        const result = Array.from(accumulator.entries())
-            .map(([sector, data]) => ({
-                sector,
-                total: Math.round(data.totalMinutes / data.totalRecords), // média em minutos
-            }))
-            .sort((a, b) => b.total - a.total);
-
-        if (result.length === 0)
-            throw new ApiException('Nenhum registro válido para cálculo de média', 404);
-
-        return result;
-    };
 
     // ENVIA DADOS / CRIA REGISTROS NA PLANILHA
     sendRecord = async (

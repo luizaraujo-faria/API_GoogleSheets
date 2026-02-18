@@ -144,56 +144,25 @@ class RecordsController{
         }
     }
 
-    groupByPeakTimeByDay = async (
+    groupByPeakTimeByMonth = async (
         req: Request,
         res: Response,
         next: NextFunction        
     ): Promise<Response | void> => {
         try{
-            const { day } = req.query;
+            const { month } = req.params;
 
             const entriesByHour: EntriesByHour[] 
-            = await this.recordsService.groupByPeakTimeByDay(
-                day as string
+            = await this.recordsService.groupByPeakTimeByMonth(
+                month as string
             );
 
             const responseMessage = 
-                `Variação de entradas por hora do dia ${day} carregados!`;
+                `Horário de pico do mês ${month} carregados!`;
 
             res.status(200).json(GoogleSheetsResponse.successMessage(
                 responseMessage,
                 entriesByHour,
-            )); 
-        }
-        catch(err: any) {
-            next(err);
-        }
-    }
-
-    listAverageMealTimeBySector = async (
-        req: Request, 
-        res: Response,
-        next: NextFunction
-    ): Promise<Response | void> => {
-
-        try{
-            const { month } = req.params;
-            const { turn } = req.query;
-
-            const avarageMealTimeBySector: AverageMealTimeBySector[] 
-            = await this.recordsService.listAverageMealTimeBySector(
-                month as string,
-                turn as string
-            );
-
-            const responseMessage = 
-                turn ?
-                `Média de tempo que cada setor comeu durante o mês (${month}) no turno (${turn}) carregados!`
-                : `Média de tempo que cada setor comeu durante o mês (${month}) carregados!`;
-
-            return res.status(200).json(GoogleSheetsResponse.successMessage(
-                responseMessage,
-                avarageMealTimeBySector
             )); 
         }
         catch(err: any) {
