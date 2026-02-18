@@ -80,7 +80,12 @@ export function groupByTime<T>(
     return Array.from(counter.entries()).map(([hour, total]) => ({
         hour,
         total
-    }));
+    }))
+    .sort((a, b) => {
+        const hourA = Number(a.hour.split(':')[0]);
+        const hourB = Number(b.hour.split(':')[0]);
+        return hourA - hourB; // crescente
+    });
 }
 
 // MAPEIA PARA CONTAGEM
