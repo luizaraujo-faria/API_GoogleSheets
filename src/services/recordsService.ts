@@ -71,12 +71,12 @@ class RecordsService {
     }
 
     // LISTA QUANTAS VEZES CADA SETOR COMEU NO MÊS
-    listMealCountOfAllSectorsByMonth = async (
-        month: string,
+    listMealCountOfAllSectorsByMonthAndYear = async (
+        date: string,
         turn?: string
     ): Promise<MealCountBySector[]> => {
 
-        const records = await this.getMonthlyFilteredRecords(month, turn);
+        const records = await this.getMonthlyFilteredRecords(date, turn);
 
         return groupAndCount(
             records,
@@ -86,12 +86,12 @@ class RecordsService {
     };
 
     // QUANTIDADE DE VEZES QUE CADA COLABORADOR COMEU NO MÊS
-    listMealCountOfAllCollaboratorsByMonth = async (
-        month: string,
+    listMealCountOfAllCollaboratorsByMonthAndYear = async (
+        date: string,
         turn?: string
     ): Promise<MealCountByCollaborator[]> => {
 
-        const records = await this.getMonthlyFilteredRecords(month, turn);
+        const records = await this.getMonthlyFilteredRecords(date, turn);
 
         return groupAndCount(
             records,
@@ -105,12 +105,12 @@ class RecordsService {
     };
 
     // QUANTIDADE DE VEZES QUE CADA TIPO DE COLABORADOR COMEU NO MÊS
-    listMealCountOfAllCollaboratorTypeByMonth = async (
-        month: string,
+    listMealCountOfAllCollaboratorTypeByMonthAndYear = async (
+        date: string,
         turn?: string
     ): Promise<MealCountByCollaboratorType[]> => {
 
-        const records = await this.getMonthlyFilteredRecords(month, turn);
+        const records = await this.getMonthlyFilteredRecords(date, turn);
 
         return groupAndCount(
             records,
@@ -120,9 +120,9 @@ class RecordsService {
     };
 
     // LISTA POR QUANTIDADE POR HORA
-    groupByPeakTimeByMonth = async (month: string): Promise<EntriesByHour[]> => {
+    groupByPeakTimeByMonthAndYear = async (date: string): Promise<EntriesByHour[]> => {
 
-        const records = await this.getMonthlyFilteredRecords(month);
+        const records = await this.getMonthlyFilteredRecords(date);
         return groupByTime(records);
     }
 
@@ -201,14 +201,14 @@ class RecordsService {
         recordsCache.clear();
     };
 
-    // CENTRALIZA VALIDAÇÃO E FILTROS DE BUSCA PELO MÊS
+    // CENTRALIZA VALIDAÇÃO E FILTROS DE BUSCA PELO MÊS e ANO
     private async getMonthlyFilteredRecords(
-        month: string,
+        date: string,
         turn?: string
     ): Promise<TimeRecord[]> {
 
-        const targetMonth = Number(month);
-        const currentYear = dayjs().year();
+        const targetMonth = Number(date.slice(0, 2));
+        const targetYear = Number(date.slice(3));
 
         if (isNaN(targetMonth) || targetMonth < 1 || targetMonth > 12) {
             throw new ApiException('Mês informado é inválido!', 400);
@@ -220,10 +220,10 @@ class RecordsService {
 
         const records = await this.loadRecords(this.sheetRange.fullRange);
 
-        let filtered = filterByMonthAndYear(records, targetMonth, currentYear);
+        let filtered = filterByMonthAndYear(records, targetMonth, targetYear);
 
         if (!filtered || filtered.length === 0) {
-            throw new ApiException('Nenhum registro encontrado para este mês!', 404);
+            throw new ApiException('Nenhum registro encontrado para este período!', 404);
         }
 
         if (serializedTurn) {
@@ -231,7 +231,7 @@ class RecordsService {
         }
 
         if (!filtered || filtered.length === 0) {
-            throw new ApiException('Nenhum registro encontrado para este mês e/ou turno!', 404);
+            throw new ApiException('Nenhum registro encontrado para este peŕiodo e/ou turno!', 404);
         }
 
         return filtered;

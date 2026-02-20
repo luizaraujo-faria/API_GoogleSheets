@@ -54,25 +54,24 @@ class RecordsController{
         }
     }
 
-    listMealCountOfAllSectorsByMonth = async (
+    listMealCountOfAllSectorsByMonthAndYear = async (
         req: Request, 
         res: Response, 
         next: NextFunction
     ): Promise<Response | void> => {
 
         try{
-            const { month } = req.params;
-            const { turn } = req.query;
+            const { date, turn } = req.query;
 
-            const mostMealSectors: any[] = await this.recordsService.listMealCountOfAllSectorsByMonth(
-                month as string,
+            const mostMealSectors: any[] = await this.recordsService.listMealCountOfAllSectorsByMonthAndYear(
+                date as string,
                 turn as string
             );
 
             const responseMessage = 
                 turn ?
-                `Quantidade de vezes que cada setor comeu durante o mês (${month}) no turno (${turn}) carregados!`
-                : `Quantidade de vezes que cada setor comeu durante o mês (${month}) carregados!`;
+                `Quantidade de vezes que cada setor comeu durante o período (${date}) no turno (${turn}) carregados!`
+                : `Quantidade de vezes que cada setor comeu durante o período (${date}) carregados!`;
 
             return res.status(200).json(GoogleSheetsResponse.successMessage(
                 responseMessage,
@@ -84,25 +83,24 @@ class RecordsController{
         }
     }
 
-    listMealCountOfAllCollaboratorsByMonth = async (
+    listMealCountOfAllCollaboratorsByMonthAndYear = async (
         req: Request, 
         res: Response, 
         next: NextFunction
     ): Promise<Response | void> => {
 
         try{
-            const { month } = req.params;
-            const { turn } = req.query;
+            const { date, turn } = req.query;
 
-            const mostMealCollaborators: any[] = await this.recordsService.listMealCountOfAllCollaboratorsByMonth(
-                month as string,
+            const mostMealCollaborators: any[] = await this.recordsService.listMealCountOfAllCollaboratorsByMonthAndYear(
+                date as string,
                 turn as string
             );
 
             const responseMessage = 
                 turn ?
-                `Quantidade de vezes que cada colaborador comeu durante o mês (${month}) no turno (${turn}) carregados!`
-                : `Quantidade de vezes que cada colaborador comeu durante o mês (${month}) carregados!`;
+                `Quantidade de vezes que cada colaborador comeu durante o período (${date}) no turno (${turn}) carregados!`
+                : `Quantidade de vezes que cada colaborador comeu durante o período (${date}) carregados!`;
 
             return res.status(200).json(GoogleSheetsResponse.successMessage(
                 responseMessage,
@@ -114,25 +112,24 @@ class RecordsController{
         }
     }
 
-    listMealCountOfAllCollaboratorTypeByMonth = async (
+    listMealCountOfAllCollaboratorTypeByMonthAndYear = async (
         req: Request, 
         res: Response, 
         next: NextFunction
     ): Promise<Response | void> => {
 
         try{
-            const { month } = req.params;
-            const { turn } = req.query;
+            const { date, turn } = req.query;
 
-            const mostMealCollaboratorType: any[] = await this.recordsService.listMealCountOfAllCollaboratorTypeByMonth(
-                month as string,
+            const mostMealCollaboratorType: any[] = await this.recordsService.listMealCountOfAllCollaboratorTypeByMonthAndYear(
+                date as string,
                 turn as string
             );
 
             const responseMessage = 
                 turn ?
-                `Quantidade de vezes que cada tipo de colaborador comeu durante o mês (${month}) no turno (${turn}) carregados!`
-                : `Quantidade de vezes que cada tipo de colaborador comeu durante o mês (${month}) carregados!`;
+                `Quantidade de vezes que cada tipo de colaborador comeu durante o período (${date}) no turno (${turn}) carregados!`
+                : `Quantidade de vezes que cada tipo de colaborador comeu durante o período (${date}) carregados!`;
 
             return res.status(200).json(GoogleSheetsResponse.successMessage(
                 responseMessage,
@@ -150,15 +147,15 @@ class RecordsController{
         next: NextFunction        
     ): Promise<Response | void> => {
         try{
-            const { month } = req.params;
+            const { date } = req.query;
 
             const entriesByHour: EntriesByHour[] 
-            = await this.recordsService.groupByPeakTimeByMonth(
-                month as string
+            = await this.recordsService.groupByPeakTimeByMonthAndYear(
+                date as string
             );
 
             const responseMessage = 
-                `Horário de pico do mês ${month} carregados!`;
+                `Horário de pico do período ${date} carregados!`;
 
             res.status(200).json(GoogleSheetsResponse.successMessage(
                 responseMessage,

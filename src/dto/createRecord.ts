@@ -5,7 +5,7 @@ export const createRecordRequestSchema = z.object({
   range: z.string().optional(),
 
   values: z.array(
-    z.tuple([collaboratorIdSchema])
+    z.tuple([collaboratorIdSchema]),
   ).min(1, 'Envie ao menos um colaborador'),
 });
 
