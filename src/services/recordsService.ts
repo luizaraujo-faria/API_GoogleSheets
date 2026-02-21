@@ -128,7 +128,7 @@ class RecordsService {
 
     // ENVIA DADOS / CRIA REGISTROS NA PLANILHA
     sendRecord = async (
-        values: Array<[number | string]>
+        values: Array<[number | string, string]>
     ): Promise<void> => {
 
         const records = Array.isArray(values) ? values : [values];
@@ -154,7 +154,6 @@ class RecordsService {
 
         const now = dayjs().tz('America/Sao_Paulo');
         const todayFormatted = now.format('DD/MM/YY');
-        const nowTime = now.format('HH:mm');
 
         const openEntryIndex = indexOpenEntries({
             rows,
@@ -169,8 +168,11 @@ class RecordsService {
         const rowsToAppend: any[][] = [];
 
         const exitColumnLetter = columnIndexToLetter(idxExit);
+        let nowTimeIndex: number = 0;
 
         for (const record of records) {
+            const nowTime = records[nowTimeIndex][1]
+
             processRecord({
             record,
             sheetName,
@@ -185,6 +187,8 @@ class RecordsService {
             updatesToApply,
             rowsToAppend,
             });
+
+            nowTimeIndex++;
         }
 
         if (updatesToApply.length > 0) {
