@@ -7,10 +7,10 @@ export function recordsRouter(container: any) {
 
     router.get('/', recordsController.getAll);
     router.get('/filters', recordsController.getAllByFilters);
-    router.get('/meal/peaktime/:month', recordsController.groupByPeakTimeByMonth);
-    router.get('/meal/sectors/:month', recordsController.listMealCountOfAllSectorsByMonth);
-    router.get('/meal/collaborators/:month', recordsController.listMealCountOfAllCollaboratorsByMonth);
-    router.get('/meal/collaborators/types/:month', recordsController.listMealCountOfAllCollaboratorTypeByMonth);
+    router.get('/meal/peaktime', recordsController.groupByPeakTimeByMonth);
+    router.get('/meal/sectors', recordsController.listMealCountOfAllSectorsByMonthAndYear);
+    router.get('/meal/collaborators', recordsController.listMealCountOfAllCollaboratorsByMonthAndYear);
+    router.get('/meal/collaborators/types', recordsController.listMealCountOfAllCollaboratorTypeByMonthAndYear);
     router.post('/', recordsController.sendRecord);
 
     return {

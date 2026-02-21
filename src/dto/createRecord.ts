@@ -1,11 +1,11 @@
 import { z } from 'zod';
-import { collaboratorIdSchema } from '../schemas/commonSchema';
+import { collaboratorIdSchema, timeSchema } from '../schemas/commonSchema';
 
 export const createRecordRequestSchema = z.object({
   range: z.string().optional(),
 
   values: z.array(
-    z.tuple([collaboratorIdSchema])
+    z.tuple([collaboratorIdSchema, timeSchema]),
   ).min(1, 'Envie ao menos um colaborador'),
 });
 

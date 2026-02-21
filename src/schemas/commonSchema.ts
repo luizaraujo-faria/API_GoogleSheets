@@ -10,6 +10,11 @@ export const collaboratorIdSchema = z.union([
     .nonempty(),
 ]);
 
+export const timeSchema = z.string().regex(
+  /^([01]\d|2[0-3]):([0-5]\d)$/,
+  'Horário deve estar no formato HH:mm'
+);
+
 export const textFieldSchema = z.string()
   .regex(/^[A-Za-zÀ-ÖØ-öø-ÿ -]+$/, 'Deve conter apenas letras')
   .min(2, 'Deve conter no mínimo duas letras');
